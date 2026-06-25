@@ -3,7 +3,6 @@ import { and, desc, eq, gte, isNull, lte } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
 import { FinanceView } from "@/components/finance/FinanceView";
-import { formatINR } from "@/lib/utils";
 
 export default async function FinancePage({ searchParams }: { searchParams: Promise<{ startDate?: string; endDate?: string }> }) {
   const user = await getCurrentUser();
@@ -30,7 +29,6 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       orders={orders}
       startDate={sp.startDate}
       endDate={sp.endDate}
-      fmt={formatINR}
     />
   );
 }

@@ -6,17 +6,16 @@ import { Button, Input, Label, Select, Modal, Card, EmptyState } from "@/compone
 import { StatusBadge } from "@/components/StatusBadge";
 import { Fab } from "@/components/Fab";
 import { createTransaction, deleteTransaction } from "@/server/finance-actions";
-import { todayISO, formatDateDMY } from "@/lib/utils";
+import { todayISO, formatDateDMY, formatINR } from "@/lib/utils";
 
 type Tx = { id: number; orderId: number | null; orderLabel: string | null; type: string; category: string; amount: number; description: string | null; date: string | null };
 
-export function FinanceView({ summary, transactions, orders, startDate, endDate, fmt }: {
+export function FinanceView({ summary, transactions, orders, startDate, endDate }: {
   summary: { totalIncome: number; totalExpenses: number; netProfit: number };
   transactions: Tx[];
   orders: { id: number; clientName: string }[];
   startDate?: string;
   endDate?: string;
-  fmt: (n: number) => string;
 }) {
   const router = useRouter();
   const sp = useSearchParams();
@@ -33,9 +32,9 @@ export function FinanceView({ summary, transactions, orders, startDate, endDate,
     <div>
       <h1 className="mb-5 text-2xl font-bold text-gray-900">Finance</h1>
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Card className="p-4"><p className="text-xs text-gray-500">Total Income</p><p className="text-xl font-bold text-kp-success">{fmt(summary.totalIncome)}</p></Card>
-        <Card className="p-4"><p className="text-xs text-gray-500">Total Expenses</p><p className="text-xl font-bold text-kp-danger">{fmt(summary.totalExpenses)}</p></Card>
-        <Card className="p-4"><p className="text-xs text-gray-500">Net Profit</p><p className="text-xl font-bold text-gray-900">{fmt(summary.netProfit)}</p></Card>
+        <Card className="p-4"><p className="text-xs text-gray-500">Total Income</p><p className="text-xl font-bold text-kp-success">{formatINR(summary.totalIncome)}</p></Card>
+        <Card className="p-4"><p className="text-xs text-gray-500">Total Expenses</p><p className="text-xl font-bold text-kp-danger">{formatINR(summary.totalExpenses)}</p></Card>
+        <Card className="p-4"><p className="text-xs text-gray-500">Net Profit</p><p className="text-xl font-bold text-gray-900">{formatINR(summary.netProfit)}</p></Card>
       </div>
 
       <Card className="mb-4 flex flex-col gap-3 p-3 sm:flex-row sm:items-end">
@@ -59,7 +58,7 @@ export function FinanceView({ summary, transactions, orders, startDate, endDate,
                     <td className="px-4 py-3 text-gray-600">{t.orderLabel ?? "General"}</td>
                     <td className="px-4 py-3 text-gray-900">{t.category}</td>
                     <td className="px-4 py-3"><StatusBadge status={t.type} /></td>
-                    <td className={`px-4 py-3 font-semibold ${t.type === "income" ? "text-kp-success" : "text-kp-danger"}`}>{t.type === "income" ? "+" : "−"}{fmt(t.amount)}</td>
+                    <td className={`px-4 py-3 font-semibold ${t.type === "income" ? "text-kp-success" : "text-kp-danger"}`}>{t.type === "income" ? "+" : "−"}{formatINR(t.amount)}</td>
                     <td className="px-4 py-3 text-right"><DelBtn id={t.id} /></td>
                   </tr>
                 ))}

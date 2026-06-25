@@ -19,7 +19,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const txns = await db.select().from(schema.finance).where(eq(schema.finance.orderId, Number(id)));
   const paid = txns.filter((t) => t.type === "income").reduce((a, t) => a + Number(t.amount), 0);
   const due = Math.max(0, Number(order.totalBudget) - paid);
-  const logoUrl = await getLogoUrl();
+  let logoUrl: string | null = null;
+  try { logoUrl = await getLogoUrl(); } catch { logoUrl = null; }
 
   return (
     <div className="mx-auto max-w-3xl p-4 sm:p-8">

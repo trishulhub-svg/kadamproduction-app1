@@ -5,6 +5,29 @@ import { Button, Card, Label } from "@/components/ui";
 import { setLogo, removeLogo } from "@/server/settings-actions";
 import { Upload, Trash2 } from "lucide-react";
 
+/** Downscale an image file to a square-ish max dimension and return a PNG data URL (preserves transparency). */
+function resizeImage(file: File, maxDim: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("Cannot process image."));
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => reject(new Error("Could not read image file."));
+    img.src = url;
+  });
+}
+
 export function SettingsView({ logoUrl }: { logoUrl: string | null }) {
   const [preview, setPreview] = useState<string | null>(logoUrl);
   const [pending, setPending] = useState(false);
@@ -14,15 +37,16 @@ export function SettingsView({ logoUrl }: { logoUrl: string | null }) {
     const file = e.target.files?.[0];
     if (!file) return;
     setError(null);
-    if (file.size > 300_000) { setError("Logo too large. Please use an image under ~220KB."); return; }
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = String(reader.result);
+    if (!file.type.startsWith("image/")) { setError("Only image files are allowed."); return; }
+    try {
+      // Resize client-side so the stored data URL stays small (prevents large-payload render crashes on Vercel)
+      const dataUrl = await resizeImage(file, 256);
       setPreview(dataUrl);
       setPending(true);
       try { await setLogo(dataUrl); } catch (err) { setError((err as Error).message); setPreview(logoUrl); } finally { setPending(false); }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      setError((err as Error).message);
+    }
   }
 
   async function remove() {

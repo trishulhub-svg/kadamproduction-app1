@@ -6,6 +6,7 @@ import { SettingsView } from "@/components/settings/SettingsView";
 export default async function SettingsPage() {
   const user = await getCurrentUser();
   if (!user || user.role !== "admin") return null;
-  const logoUrl = await getLogoUrl();
+  let logoUrl: string | null = null;
+  try { logoUrl = await getLogoUrl(); } catch { logoUrl = null; }
   return <SettingsView logoUrl={logoUrl} />;
 }
