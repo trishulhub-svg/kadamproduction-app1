@@ -133,6 +133,20 @@ const DDL = [
   )`,
 ];
 
+// Migration DDL — run with try/catch (idempotent)
+const MIGRATION_DDL: { sql: string; label: string }[] = [
+  { sql: `CREATE TABLE IF NOT EXISTS subcategories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+    description TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`, label: "subcategories table" },
+  { sql: `CREATE INDEX IF NOT EXISTS subcategories_category_idx ON subcategories(category_id)`, label: "subcategories index" },
+  { sql: `CREATE INDEX IF NOT EXISTS items_subcategory_idx ON items(subcategory_id)`, label: "items subcategory index" },
+];
+
 export async function GET() {
   const url = process.env.TURSO_DATABASE_URL;
   const token = process.env.TURSO_AUTH_TOKEN;
@@ -147,6 +161,36 @@ export async function GET() {
       await client.execute(stmt);
     }
     log.push("Tables ensured (13 tables).");
+
+    // Run migrations (subcategories table, new item columns)
+    for (const m of MIGRATION_DDL) {
+      try {
+        await client.execute(m.sql);
+        log.push(`Migration: ${m.label} — OK`);
+      } catch {
+        log.push(`Migration: ${m.label} — already applied`);
+      }
+    }
+    // ALTER TABLE for items (idempotent via try/catch)
+    const alterStmts = [
+      { sql: "ALTER TABLE items ADD COLUMN subcategory_id INTEGER", label: "items.subcategory_id" },
+      { sql: "ALTER TABLE items ADD COLUMN description TEXT", label: "items.description" },
+    ];
+    for (const a of alterStmts) {
+      try {
+        await client.execute(a.sql);
+        log.push(`Migration: ${a.label} — added`);
+      } catch {
+        log.push(`Migration: ${a.label} — already exists`);
+      }
+    }
+    // Default scan_enabled setting
+    try {
+      await client.execute("INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('scan_enabled', 'true', unixepoch())");
+      log.push("Migration: scan_enabled setting — OK");
+    } catch {
+      log.push("Migration: scan_enabled setting — exists");
+    }
 
     // Seed admin if none exists
     const existing = await client.execute("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
