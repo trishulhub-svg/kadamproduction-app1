@@ -21,12 +21,14 @@ export function StatCard({
   tone = "primary",
   href,
   icon: Icon,
+  smallText,
 }: {
   label: string;
   value: number | string;
   tone?: keyof typeof TONES;
   href?: string;
   icon?: LucideIcon;
+  smallText?: boolean;
 }) {
   const body = (
     <div className={cn("group flex items-center gap-4 rounded-xl p-4 shadow-sm transition hover:shadow-md hover:-translate-y-0.5", TONES[tone])}>
@@ -37,7 +39,7 @@ export function StatCard({
       )}
       <div className="min-w-0">
         <div className="truncate text-xs font-medium uppercase tracking-wide opacity-80">{label}</div>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className={cn("font-bold", smallText ? "text-lg" : "text-2xl")}>{value}</div>
       </div>
     </div>
   );

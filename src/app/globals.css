@@ -72,3 +72,12 @@ body {
   background: #cbd2e0;
   border-radius: 8px;
 }
+
+/* Logo zoom in/out animation (login page) */
+@keyframes kp-logo-zoom {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+.kp-logo-zoom {
+  animation: kp-logo-zoom 3s ease-in-out infinite;
+}

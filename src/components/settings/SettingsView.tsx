@@ -2,8 +2,8 @@
 "use client";
 import { useState } from "react";
 import { Button, Card, Label } from "@/components/ui";
-import { setLogo, removeLogo } from "@/server/settings-actions";
-import { Upload, Trash2 } from "lucide-react";
+import { setLogo, removeLogo, setScanEnabled } from "@/server/settings-actions";
+import { Upload, Trash2, ScanLine } from "lucide-react";
 
 /** Downscale an image file to a square-ish max dimension and return a PNG data URL (preserves transparency). */
 function resizeImage(file: File, maxDim: number): Promise<string> {
@@ -28,10 +28,11 @@ function resizeImage(file: File, maxDim: number): Promise<string> {
   });
 }
 
-export function SettingsView({ logoUrl }: { logoUrl: string | null }) {
+export function SettingsView({ logoUrl, scanEnabled }: { logoUrl: string | null; scanEnabled: boolean }) {
   const [preview, setPreview] = useState<string | null>(logoUrl);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [scanOn, setScanOn] = useState(scanEnabled);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -88,6 +89,40 @@ export function SettingsView({ logoUrl }: { logoUrl: string | null }) {
         {error && <p className="text-sm text-kp-danger">{error}</p>}
         <p className="text-xs text-gray-400">Logo is stored securely in the database and used across the app.</p>
       </Card>
+
+      {/* Scan Item toggle */}
+      <Card className="mt-4 max-w-lg p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50">
+              <ScanLine className="h-5 w-5 text-amber-600" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700">Scan Item Visibility</h3>
+              <p className="text-xs text-gray-500">Toggle the Scan feature for all employee dashboards.</p>
+            </div>
+          </div>
+          <ToggleSwitch
+            checked={scanOn}
+            onChange={async (v) => {
+              setScanOn(v);
+              try { await setScanEnabled(v); } catch (e) { setScanOn(!v); alert((e as Error).message); }
+            }}
+          />
+        </div>
+      </Card>
     </div>
+  );
+}
+
+function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${checked ? "bg-kp-success" : "bg-gray-300"}`}
+    >
+      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${checked ? "translate-x-6" : "translate-x-1"}`} />
+    </button>
   );
 }

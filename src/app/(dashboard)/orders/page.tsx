@@ -1,4 +1,5 @@
 // src/app/(dashboard)/orders/page.tsx
+import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { listOrders, statusCounts } from "@/lib/orders-queries";
 import { OrdersView } from "@/components/orders/OrdersView";
@@ -21,5 +22,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const hasFilter = Boolean(filters.status || filters.startDate || filters.endDate || filters.search || filters.year);
   const [orders, counts] = await Promise.all([hasFilter ? listOrders(filters) : Promise.resolve([]), statusCounts()]);
 
-  return <OrdersView orders={orders} counts={counts} filters={filters as Record<string, string>} hasFilter={hasFilter} openNew={openNew} />;
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-gray-500">Loading orders…</div>}>
+      <OrdersView orders={orders} counts={counts} filters={filters as Record<string, string>} hasFilter={hasFilter} openNew={openNew} />
+    </Suspense>
+  );
 }

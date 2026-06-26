@@ -27,6 +27,9 @@ export type ItemRow = {
   barcode: string;
   categoryId: number | null;
   categoryName: string | null;
+  subcategoryId: number | null;
+  subcategoryName: string | null;
+  description: string | null;
   quantity: number;
   status: ItemStatus;
   committed: number; // across active orders (all dates)
@@ -34,9 +37,10 @@ export type ItemRow = {
 };
 
 /** Inventory list with computed availability. `onDate` enables improvement #1. */
-export async function listItems(opts?: { categoryId?: number; search?: string; onDate?: string }): Promise<ItemRow[]> {
+export async function listItems(opts?: { categoryId?: number; subcategoryId?: number; search?: string; onDate?: string }): Promise<ItemRow[]> {
   const conds = [isNull(schema.items.deletedAt)];
   if (opts?.categoryId) conds.push(eq(schema.items.categoryId, opts.categoryId));
+  if (opts?.subcategoryId) conds.push(eq(schema.items.subcategoryId, opts.subcategoryId));
   if (opts?.search) conds.push(sql`upper(${schema.items.name}) like ${"%" + opts.search.toUpperCase() + "%"}`);
 
   const rows = await db
@@ -46,11 +50,15 @@ export async function listItems(opts?: { categoryId?: number; search?: string; o
       barcode: schema.items.barcode,
       categoryId: schema.items.categoryId,
       categoryName: schema.categories.name,
+      subcategoryId: schema.items.subcategoryId,
+      subcategoryName: schema.subcategories.name,
+      description: schema.items.description,
       quantity: schema.items.quantity,
       status: schema.items.status,
     })
     .from(schema.items)
     .leftJoin(schema.categories, eq(schema.items.categoryId, schema.categories.id))
+    .leftJoin(schema.subcategories, eq(schema.items.subcategoryId, schema.subcategories.id))
     .where(and(...conds));
 
   const out: ItemRow[] = [];

@@ -1,5 +1,5 @@
 // src/app/(dashboard)/my-tasks/page.tsx
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
 import { Card, EmptyState, Button } from "@/components/ui";
@@ -23,7 +23,7 @@ export default async function MyTasksPage() {
     })
     .from(schema.orderAssignments)
     .innerJoin(schema.orders, eq(schema.orderAssignments.orderId, schema.orders.id))
-    .where(eq(schema.orderAssignments.userId, user.id));
+    .where(and(eq(schema.orderAssignments.userId, user.id), isNull(schema.orders.deletedAt), ne(schema.orders.status, "cancelled")));
 
   return (
     <div>

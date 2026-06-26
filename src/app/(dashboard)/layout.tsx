@@ -1,7 +1,7 @@
 // src/app/(dashboard)/layout.tsx
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { getLogoUrl } from "@/lib/settings";
+import { getLogoUrl, getScanEnabled } from "@/lib/settings";
 import { DashboardShell } from "@/components/DashboardShell";
 import { logoutAction } from "@/server/auth-actions";
 
@@ -9,16 +9,22 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  // Defensive: a logo DB read must never break the whole shell.
+  // Defensive: DB reads must never break the whole shell.
   let logoUrl: string | null = null;
+  let scanEnabled = true;
   try {
     logoUrl = await getLogoUrl();
   } catch {
     logoUrl = null;
   }
+  try {
+    scanEnabled = await getScanEnabled();
+  } catch {
+    scanEnabled = true;
+  }
 
   return (
-    <DashboardShell role={user.role} name={user.name} logoUrl={logoUrl} logout={logoutAction}>
+    <DashboardShell role={user.role} name={user.name} logoUrl={logoUrl} scanEnabled={scanEnabled} logout={logoutAction}>
       {children}
     </DashboardShell>
   );

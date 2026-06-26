@@ -32,3 +32,10 @@ export async function removeLogo() {
   await db.delete(schema.settings).where(eq(schema.settings.key, "logo_url"));
   revalidatePath("/", "layout");
 }
+
+export async function setScanEnabled(enabled: boolean) {
+  const user = await requireAdmin();
+  if (!user) throw new Error("Unauthorized");
+  await upsertSetting("scan_enabled", enabled ? "true" : "false");
+  revalidatePath("/", "layout");
+}

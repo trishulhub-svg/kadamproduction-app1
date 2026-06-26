@@ -84,7 +84,7 @@ function ResetBtn({ id, name }: { id: number; name: string }) {
     try { await resetPassword(id, pw); alert("Password updated."); } catch (e) { alert((e as Error).message); }
     setPending(false);
   }
-  return <Button size="sm" variant="warning" onClick={run} disabled={pending}>{pending ? "…" : "Reset Pwd"}</Button>;
+  return <Button size="sm" variant="warning" onClick={run} disabled={pending}>{pending ? "…" : "Reset Password"}</Button>;
 }
 
 function DeleteBtn({ id, name }: { id: number; name: string }) {

@@ -45,15 +45,20 @@ export function Sidebar({
   role,
   name,
   logoUrl,
+  scanEnabled = true,
   onLogout,
 }: {
   role: "admin" | "employee";
   name: string;
   logoUrl?: string | null;
+  scanEnabled?: boolean;
   onLogout: () => Promise<void>;
 }) {
   const pathname = usePathname();
-  const nav = role === "admin" ? ADMIN_NAV : EMPLOYEE_NAV;
+  // For employees, filter out Scan Item when scanEnabled is off
+  const nav = (role === "admin" ? ADMIN_NAV : EMPLOYEE_NAV).filter(
+    (item) => item.href !== "/scan" || role === "admin" || scanEnabled
+  );
   const brand = role === "admin" ? "KP Admin" : "KP Staff";
 
   return (
@@ -63,10 +68,10 @@ export function Sidebar({
         <div className="flex items-center gap-3">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt="Logo" className="h-10 w-10 rounded-lg bg-white/20 object-contain p-1" />
+            <img src={logoUrl} alt="Logo" className="h-12 w-12 object-contain" />
           ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20">
-              <Film className="h-6 w-6" />
+            <div className="flex h-12 w-12 items-center justify-center">
+              <Film className="h-7 w-7" />
             </div>
           )}
           <div className="min-w-0">

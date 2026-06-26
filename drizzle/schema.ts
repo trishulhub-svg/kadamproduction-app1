@@ -97,6 +97,26 @@ export const categories = sqliteTable("categories", {
 });
 
 // ──────────────────────────────────────────────────────────────────────────
+// Sub-Categories (under a Master Category)
+// ──────────────────────────────────────────────────────────────────────────
+export const subcategories = sqliteTable(
+  "subcategories",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    categoryId: integer("category_id")
+      .notNull()
+      .references(() => categories.id, { onDelete: "cascade" }),
+    description: text("description"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$onUpdateFn(() => new Date()),
+  },
+  (t) => ({
+    categoryIdx: index("subcategories_category_idx").on(t.categoryId),
+  })
+);
+
+// ──────────────────────────────────────────────────────────────────────────
 // Items  (quantity + status dual model preserved from PHP)
 // ──────────────────────────────────────────────────────────────────────────
 export const items = sqliteTable(
@@ -106,6 +126,8 @@ export const items = sqliteTable(
     name: text("name").notNull(), // PHP uppercases on save — preserved
     barcode: text("barcode").notNull().unique(), // "KP" + time() + rand(100,999)
     categoryId: integer("category_id"),
+    subcategoryId: integer("subcategory_id"),
+    description: text("description"),
     quantity: integer("quantity").notNull().default(0),
     status: text("status", { enum: ITEM_STATUS }).notNull().default("available"),
     currentOrderId: integer("current_order_id"),
@@ -116,6 +138,7 @@ export const items = sqliteTable(
   (t) => ({
     barcodeIdx: uniqueIndex("items_barcode_idx").on(t.barcode),
     categoryIdx: index("items_category_idx").on(t.categoryId),
+    subcategoryIdx: index("items_subcategory_idx").on(t.subcategoryId),
     statusIdx: index("items_status_idx").on(t.status),
   })
 );

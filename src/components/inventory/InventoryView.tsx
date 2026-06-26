@@ -2,7 +2,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { Boxes, CircleCheck, CalendarClock, AlertTriangle, Search } from "lucide-react";
+import { Boxes, CircleCheck, CalendarClock, AlertTriangle, Search, Printer } from "lucide-react";
 import { useState } from "react";
 import { Button, Input, Label, Select, Modal, Card, EmptyState } from "@/components/ui";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -10,30 +10,37 @@ import { Fab } from "@/components/Fab";
 import { createItem, updateItem, quickUpdateQty, deleteItem } from "@/server/inventory-actions";
 import type { ItemRow } from "@/lib/queries";
 
+type SubCat = { id: number; name: string; categoryId: number };
 type Props = {
   categories: { id: number; name: string }[];
+  subcategories: SubCat[];
   items: ItemRow[];
   date: string;
   totals: { total: number; available: number; committed: number; damaged: number };
 };
 
-export function InventoryView({ categories, items, date, totals }: Props) {
+export function InventoryView({ categories, subcategories, items, date, totals }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState<string>("");
+  const [subFilter, setSubFilter] = useState<string>("");
   const [addOpen, setAddOpen] = useState(false);
   const [editItem, setEditItem] = useState<ItemRow | null>(null);
   const [qtyItem, setQtyItem] = useState<ItemRow | null>(null);
+  const [printItem, setPrintItem] = useState<ItemRow | null>(null);
 
   function setDate(d: string) {
     startTransition(() => router.replace(`/inventory?date=${d}`));
   }
 
+  const filteredSubs = catFilter ? subcategories.filter((s) => String(s.categoryId) === catFilter) : subcategories;
+
   const filtered = items.filter(
     (i) =>
       (!search || i.name.includes(search.toUpperCase())) &&
-      (!catFilter || String(i.categoryId) === catFilter)
+      (!catFilter || String(i.categoryId) === catFilter) &&
+      (!subFilter || String(i.subcategoryId) === subFilter)
   );
 
   return (
@@ -43,7 +50,6 @@ export function InventoryView({ categories, items, date, totals }: Props) {
           <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
           <p className="text-sm text-gray-500">Stock availability as of the selected date</p>
         </div>
-        {/* Improvement #1 — date-based availability */}
         <div>
           <Label className="mb-1">Availability Date</Label>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-48" />
@@ -59,17 +65,21 @@ export function InventoryView({ categories, items, date, totals }: Props) {
       </div>
 
       {/* Filters */}
-      <Card className="mb-4 flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input placeholder="Search items…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+      <Card className="mb-4 p-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input placeholder="Search items…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          </div>
+          <Select value={catFilter} onChange={(e) => { setCatFilter(e.target.value); setSubFilter(""); }} className="sm:w-48">
+            <option value="">All categories</option>
+            {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
+          </Select>
+          <Select value={subFilter} onChange={(e) => setSubFilter(e.target.value)} className="sm:w-48">
+            <option value="">All sub-categories</option>
+            {filteredSubs.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}
+          </Select>
         </div>
-        <Select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="sm:w-56">
-          <option value="">All categories</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </Select>
       </Card>
 
       {/* Table */}
@@ -78,14 +88,15 @@ export function InventoryView({ categories, items, date, totals }: Props) {
           <EmptyState title="No items found" hint="Use the + button to add inventory." />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
+            <table className="w-full min-w-[860px] text-left text-sm">
               <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-4 py-3">Item</th>
                   <th className="px-4 py-3">Category</th>
+                  <th className="px-4 py-3">Sub-Category</th>
                   <th className="px-4 py-3">Barcode</th>
-                  <th className="px-4 py-3">Total Qty</th>
-                  <th className="px-4 py-3">Available ({date})</th>
+                  <th className="px-4 py-3">Qty</th>
+                  <th className="px-4 py-3">Available</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -93,9 +104,16 @@ export function InventoryView({ categories, items, date, totals }: Props) {
               <tbody className="divide-y divide-gray-100">
                 {filtered.map((it) => (
                   <tr key={it.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{it.name}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-gray-900">{it.name}</div>
+                      {it.description && <div className="text-xs text-gray-400">{it.description}</div>}
+                    </td>
                     <td className="px-4 py-3 text-gray-600">{it.categoryName ?? "—"}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-gray-500">{it.barcode}</td>
+                    <td className="px-4 py-3 text-gray-600">{it.subcategoryName ?? "—"}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                      {it.barcode}
+                      <button onClick={() => setPrintItem(it)} className="ml-1 text-blue-500 hover:text-blue-700" title="Print barcode"><Printer className="inline h-3.5 w-3.5" /></button>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <span className="font-semibold">{it.quantity}</span>
@@ -122,40 +140,37 @@ export function InventoryView({ categories, items, date, totals }: Props) {
 
       <Fab onClick={() => setAddOpen(true)} label="Add item" />
 
-      {addOpen && <AddModal categories={categories} onClose={() => setAddOpen(false)} />}
-      {editItem && <EditModal item={editItem} categories={categories} onClose={() => setEditItem(null)} />}
+      {addOpen && <AddModal categories={categories} subcategories={subcategories} onClose={() => setAddOpen(false)} />}
+      {editItem && <EditModal item={editItem} categories={categories} subcategories={subcategories} onClose={() => setEditItem(null)} />}
       {qtyItem && <QtyModal item={qtyItem} onClose={() => setQtyItem(null)} />}
+      {printItem && <PrintBarcodeModal item={printItem} onClose={() => setPrintItem(null)} />}
     </div>
   );
 }
 
 function SummaryCard({ icon: Icon, tone, label, value }: { icon: typeof Boxes; tone: string; label: string; value: number }) {
-  const tones: Record<string, string> = {
-    primary: "bg-kp-primary text-white",
-    success: "bg-kp-success text-white",
-    warning: "bg-kp-warning text-black",
-    danger: "bg-kp-danger text-white",
-  };
+  const tones: Record<string, string> = { primary: "bg-kp-primary text-white", success: "bg-kp-success text-white", warning: "bg-kp-warning text-black", danger: "bg-kp-danger text-white" };
   return (
     <div className={`flex items-center gap-3 rounded-xl p-4 ${tones[tone]}`}>
       <Icon className="h-7 w-7 opacity-80" />
-      <div>
-        <div className="text-xs opacity-80">{label}</div>
-        <div className="text-xl font-bold">{value}</div>
-      </div>
+      <div><div className="text-xs opacity-80">{label}</div><div className="text-xl font-bold">{value}</div></div>
     </div>
   );
 }
 
-function AddModal({ categories, onClose }: { categories: { id: number; name: string }[]; onClose: () => void }) {
+function AddModal({ categories, subcategories, onClose }: { categories: { id: number; name: string }[]; subcategories: { id: number; name: string; categoryId: number }[]; onClose: () => void }) {
   const [pending, setPending] = useState(false);
+  const [selCat, setSelCat] = useState("");
+  const filteredSubs = selCat ? subcategories.filter((s) => String(s.categoryId) === selCat) : subcategories;
+
   async function submit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setPending(true);
+    e.preventDefault(); setPending(true);
     const f = new FormData(e.currentTarget);
     await createItem({
       name: String(f.get("name")),
       categoryId: Number(f.get("categoryId")) || undefined,
+      subcategoryId: Number(f.get("subcategoryId")) || undefined,
+      description: String(f.get("description") || ""),
       quantity: Number(f.get("quantity")),
     });
     onClose();
@@ -163,8 +178,16 @@ function AddModal({ categories, onClose }: { categories: { id: number; name: str
   return (
     <Modal open onClose={onClose} title="Add New Item">
       <form onSubmit={submit} className="space-y-4">
+        <div>
+          <Label>Master Category</Label>
+          <Select name="categoryId" onChange={(e) => setSelCat(e.target.value)}><option value="">—</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
+        </div>
+        <div>
+          <Label>Sub-Category</Label>
+          <Select name="subcategoryId"><option value="">—</option>{filteredSubs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</Select>
+        </div>
         <div><Label>Item Name *</Label><Input name="name" required placeholder="e.g. SPEAKER JBL" /></div>
-        <div><Label>Category</Label><Select name="categoryId"><option value="">—</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></div>
+        <div><Label>Description</Label><Input name="description" placeholder="Item description / specs" /></div>
         <div><Label>Quantity *</Label><Input name="quantity" type="number" min={0} required defaultValue={1} /></div>
         <p className="text-xs text-gray-400">Barcode is auto-generated (KP…) on save.</p>
         <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" type="button" onClick={onClose}>Cancel</Button><Button type="submit" disabled={pending}>{pending ? "Saving…" : "Add Item"}</Button></div>
@@ -173,15 +196,19 @@ function AddModal({ categories, onClose }: { categories: { id: number; name: str
   );
 }
 
-function EditModal({ item, categories, onClose }: { item: ItemRow; categories: { id: number; name: string }[]; onClose: () => void }) {
+function EditModal({ item, categories, subcategories, onClose }: { item: ItemRow; categories: { id: number; name: string }[]; subcategories: { id: number; name: string; categoryId: number }[]; onClose: () => void }) {
   const [pending, setPending] = useState(false);
+  const [selCat, setSelCat] = useState(String(item.categoryId ?? ""));
+  const filteredSubs = selCat ? subcategories.filter((s) => String(s.categoryId) === selCat) : subcategories;
+
   async function submit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setPending(true);
+    e.preventDefault(); setPending(true);
     const f = new FormData(e.currentTarget);
     await updateItem(item.id, {
       name: String(f.get("name")),
       categoryId: Number(f.get("categoryId")) || null,
+      subcategoryId: Number(f.get("subcategoryId")) || null,
+      description: String(f.get("description") || ""),
       quantity: Number(f.get("quantity")),
       status: String(f.get("status")),
       newBarcode: String(f.get("newBarcode") || ""),
@@ -191,8 +218,16 @@ function EditModal({ item, categories, onClose }: { item: ItemRow; categories: {
   return (
     <Modal open onClose={onClose} title="Edit Item">
       <form onSubmit={submit} className="space-y-4">
+        <div>
+          <Label>Master Category</Label>
+          <Select name="categoryId" defaultValue={item.categoryId ?? ""} onChange={(e) => setSelCat(e.target.value)}><option value="">—</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
+        </div>
+        <div>
+          <Label>Sub-Category</Label>
+          <Select name="subcategoryId" defaultValue={item.subcategoryId ?? ""}><option value="">—</option>{filteredSubs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</Select>
+        </div>
         <div><Label>Item Name</Label><Input name="name" required defaultValue={item.name} /></div>
-        <div><Label>Category</Label><Select name="categoryId" defaultValue={item.categoryId ?? ""}><option value="">—</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></div>
+        <div><Label>Description</Label><Input name="description" defaultValue={item.description ?? ""} /></div>
         <div><Label>Current Barcode (read-only)</Label><Input value={item.barcode} readOnly className="bg-gray-50 font-mono text-xs" /></div>
         <div><Label>New Barcode (optional)</Label><Input name="newBarcode" placeholder="Leave blank to keep current" /></div>
         <div><Label>Total Quantity</Label><Input name="quantity" type="number" min={0} defaultValue={item.quantity} /></div>
@@ -206,11 +241,7 @@ function EditModal({ item, categories, onClose }: { item: ItemRow; categories: {
 function QtyModal({ item, onClose }: { item: ItemRow; onClose: () => void }) {
   const [pending, setPending] = useState(false);
   const [val, setVal] = useState(item.quantity);
-  async function save() {
-    setPending(true);
-    await quickUpdateQty(item.id, val);
-    onClose();
-  }
+  async function save() { setPending(true); await quickUpdateQty(item.id, val); onClose(); }
   return (
     <Modal open onClose={onClose} title="Quick Quantity Update">
       <div className="space-y-4">
@@ -226,17 +257,50 @@ function QtyModal({ item, onClose }: { item: ItemRow; onClose: () => void }) {
   );
 }
 
+function PrintBarcodeModal({ item, onClose }: { item: ItemRow; onClose: () => void }) {
+  function doPrint() { window.print(); }
+  return (
+    <Modal open onClose={onClose} title="Print Barcode">
+      <div className="space-y-4">
+        <div className="print-area rounded-lg border-2 border-dashed border-gray-300 p-6 text-center">
+          <p className="text-lg font-bold text-gray-900">{item.name}</p>
+          {item.description && <p className="text-xs text-gray-500">{item.description}</p>}
+          <div className="my-3">
+            <svg viewBox="0 0 200 60" className="mx-auto h-16 w-48" style={{ imageRendering: "pixelated" }}>
+              {generateBarcodeSvg(item.barcode)}
+            </svg>
+          </div>
+          <p className="font-mono text-sm tracking-widest text-gray-700">{item.barcode}</p>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" type="button" onClick={onClose}>Close</Button>
+          <Button onClick={doPrint}><Printer className="h-4 w-4" /> Print</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function generateBarcodeSvg(code: string): React.ReactNode {
+  const bars: React.ReactNode[] = [];
+  let x = 0;
+  for (let i = 0; i < code.length; i++) {
+    const charCode = code.charCodeAt(i);
+    const pattern = charCode.toString(2).padStart(7, "0");
+    for (let j = 0; j < pattern.length; j++) {
+      if (pattern[j] === "1") bars.push(<rect key={`${i}-${j}`} x={x} y={0} width={2} height={60} fill="black" />);
+      x += 3;
+    }
+  }
+  return bars;
+}
+
 function DeleteBtn({ id, name }: { id: number; name: string }) {
   const [pending, setPending] = useState(false);
   async function run() {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
     setPending(true);
-    try {
-      await deleteItem(id);
-    } catch (e) {
-      alert((e as Error).message);
-      setPending(false);
-    }
+    try { await deleteItem(id); } catch (e) { alert((e as Error).message); setPending(false); }
   }
   return <Button size="sm" variant="danger" onClick={run} disabled={pending}>{pending ? "…" : "Delete"}</Button>;
 }

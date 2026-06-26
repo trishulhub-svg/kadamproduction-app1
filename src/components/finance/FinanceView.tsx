@@ -2,6 +2,7 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition, useState } from "react";
+import { TrendingUp, TrendingDown, Wallet, IndianRupee } from "lucide-react";
 import { Button, Input, Label, Select, Modal, Card, EmptyState } from "@/components/ui";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Fab } from "@/components/Fab";
@@ -11,7 +12,7 @@ import { todayISO, formatDateDMY, formatINR } from "@/lib/utils";
 type Tx = { id: number; orderId: number | null; orderLabel: string | null; type: string; category: string; amount: number; description: string | null; date: string | null };
 
 export function FinanceView({ summary, transactions, orders, startDate, endDate }: {
-  summary: { totalIncome: number; totalExpenses: number; netProfit: number };
+  summary: { totalIncome: number; totalExpenses: number; netProfit: number; totalDue: number };
   transactions: Tx[];
   orders: { id: number; clientName: string }[];
   startDate?: string;
@@ -31,10 +32,23 @@ export function FinanceView({ summary, transactions, orders, startDate, endDate 
   return (
     <div>
       <h1 className="mb-5 text-2xl font-bold text-gray-900">Finance</h1>
-      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Card className="p-4"><p className="text-xs text-gray-500">Total Income</p><p className="text-xl font-bold text-kp-success">{formatINR(summary.totalIncome)}</p></Card>
-        <Card className="p-4"><p className="text-xs text-gray-500">Total Expenses</p><p className="text-xl font-bold text-kp-danger">{formatINR(summary.totalExpenses)}</p></Card>
-        <Card className="p-4"><p className="text-xs text-gray-500">Net Profit</p><p className="text-xl font-bold text-gray-900">{formatINR(summary.netProfit)}</p></Card>
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="flex items-center gap-3 rounded-xl bg-emerald-500 p-4 text-white shadow-sm">
+          <TrendingUp className="h-8 w-8 opacity-80" />
+          <div><p className="text-xs opacity-80">Total Income</p><p className="text-xl font-bold">{formatINR(summary.totalIncome)}</p></div>
+        </div>
+        <div className="flex items-center gap-3 rounded-xl bg-red-500 p-4 text-white shadow-sm">
+          <TrendingDown className="h-8 w-8 opacity-80" />
+          <div><p className="text-xs opacity-80">Total Expenses</p><p className="text-xl font-bold">{formatINR(summary.totalExpenses)}</p></div>
+        </div>
+        <div className="flex items-center gap-3 rounded-xl bg-blue-500 p-4 text-white shadow-sm">
+          <Wallet className="h-8 w-8 opacity-80" />
+          <div><p className="text-xs opacity-80">Total Due</p><p className="text-xl font-bold">{formatINR(summary.totalDue)}</p></div>
+        </div>
+        <div className="flex items-center gap-3 rounded-xl bg-amber-400 p-4 text-black shadow-sm">
+          <IndianRupee className="h-8 w-8 opacity-80" />
+          <div><p className="text-xs opacity-80">Net Profit</p><p className="text-xl font-bold">{formatINR(summary.netProfit)}</p></div>
+        </div>
       </div>
 
       <Card className="mb-4 flex flex-col gap-3 p-3 sm:flex-row sm:items-end">

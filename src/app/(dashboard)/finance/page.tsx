@@ -1,5 +1,6 @@
 // src/app/(dashboard)/finance/page.tsx
-import { and, desc, eq, gte, isNull, lte } from "drizzle-orm";
+import { Suspense } from "react";
+import { and, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
 import { FinanceView } from "@/components/finance/FinanceView";
@@ -20,15 +21,26 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
   let income = 0, expense = 0;
   for (const r of rows) { if (r.type === "income") income += Number(r.amount); else expense += Number(r.amount); }
-  const summary = { totalIncome: income, totalExpenses: expense, netProfit: income - expense };
+
+  // Calculate total due from orders
+  const ordersForDue = await db.select({ id: schema.orders.id, budget: schema.orders.totalBudget }).from(schema.orders).where(and(isNull(schema.orders.deletedAt), sql`${schema.orders.status} != 'cancelled'`));
+  let totalDue = 0;
+  for (const o of ordersForDue) {
+    const incForOrder = rows.filter((r) => r.orderId === o.id && r.type === "income").reduce((a, r) => a + Number(r.amount), 0);
+    totalDue += Math.max(0, Number(o.budget) - incForOrder);
+  }
+
+  const summary = { totalIncome: income, totalExpenses: expense, netProfit: income - expense, totalDue };
 
   return (
-    <FinanceView
-      transactions={rows.map((r) => ({ ...r, amount: Number(r.amount), orderLabel: orders.find((o) => o.id === r.orderId)?.clientName ?? null }))}
-      summary={summary}
-      orders={orders}
-      startDate={sp.startDate}
-      endDate={sp.endDate}
-    />
+    <Suspense fallback={<div className="p-8 text-sm text-gray-500">Loading finance…</div>}>
+      <FinanceView
+        transactions={rows.map((r) => ({ ...r, amount: Number(r.amount), orderLabel: orders.find((o) => o.id === r.orderId)?.clientName ?? null }))}
+        summary={summary}
+        orders={orders}
+        startDate={sp.startDate}
+        endDate={sp.endDate}
+      />
+    </Suspense>
   );
 }

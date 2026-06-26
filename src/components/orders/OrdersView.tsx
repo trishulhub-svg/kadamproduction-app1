@@ -130,7 +130,7 @@ export function OrdersView({ orders, counts, filters, hasFilter, openNew }: Prop
                     <td className="px-4 py-3 text-gray-600">{o.eventCategory ?? "Other"}</td>
                     <td className="px-4 py-3 text-gray-600">{formatDateDMY(o.eventDate)}</td>
                     <td className="px-4 py-3 text-gray-600">{formatINR(o.totalBudget)}</td>
-                    <td className="px-4 py-3 font-semibold text-kp-danger">{formatINR(o.due)}</td>
+                    <td className="px-4 py-3 font-semibold text-kp-danger">{o.status === "cancelled" ? "—" : formatINR(o.due)}</td>
                     <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
                     <td className="px-4 py-3">
                       {/* Improvement #7: actions (incl. Delete) always visible, incl. mobile */}

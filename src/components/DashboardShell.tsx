@@ -8,12 +8,14 @@ export function DashboardShell({
   role,
   name,
   logoUrl,
+  scanEnabled = true,
   logout,
   children,
 }: {
   role: "admin" | "employee";
   name: string;
   logoUrl?: string | null;
+  scanEnabled?: boolean;
   logout: () => Promise<void>;
   children: React.ReactNode;
 }) {
@@ -22,7 +24,7 @@ export function DashboardShell({
     <div className="flex min-h-screen w-full">
       {/* Desktop sidebar */}
       <div className="sticky top-0 hidden h-screen shrink-0 lg:block">
-        <Sidebar role={role} name={name} logoUrl={logoUrl} onLogout={logout} />
+        <Sidebar role={role} name={name} logoUrl={logoUrl} scanEnabled={scanEnabled} onLogout={logout} />
       </div>
 
       {/* Mobile drawer */}
@@ -30,7 +32,7 @@ export function DashboardShell({
         <div className="fixed inset-0 z-[90] lg:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-0 h-full">
-            <Sidebar role={role} name={name} logoUrl={logoUrl} onLogout={logout} />
+            <Sidebar role={role} name={name} logoUrl={logoUrl} scanEnabled={scanEnabled} onLogout={logout} />
           </div>
           <button className="absolute right-4 top-4 rounded-lg bg-white p-2 shadow" onClick={() => setOpen(false)}>
             <X className="h-5 w-5" />

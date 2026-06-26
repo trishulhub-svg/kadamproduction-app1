@@ -11,3 +11,8 @@ export async function getLogoUrl(): Promise<string | null> {
   const v = await getSetting("logo_url");
   return v && v.length > 0 ? v : null;
 }
+
+export async function getScanEnabled(): Promise<boolean> {
+  const v = await getSetting("scan_enabled");
+  return v !== "false"; // default true unless explicitly set to "false"
+}

@@ -12,9 +12,10 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
   const date = sp.date || todayISO();
 
-  const [items, categories] = await Promise.all([
+  const [items, categories, subcategories] = await Promise.all([
     listItems({ onDate: date }),
     db.select().from(schema.categories),
+    db.select().from(schema.subcategories),
   ]);
 
   const total = items.reduce((a, i) => a + i.quantity, 0);
@@ -25,6 +26,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
   return (
     <InventoryView
       categories={categories}
+      subcategories={subcategories}
       items={items}
       date={date}
       totals={{ total, available, committed, damaged }}
