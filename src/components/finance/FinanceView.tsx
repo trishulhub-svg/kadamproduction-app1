@@ -99,7 +99,7 @@ export function FinanceView({ summary, transactions, orders, startDate, endDate 
 
 function SummaryCard({ icon: Icon, label, value, bg, textDark, visible }: { icon: typeof TrendingUp; label: string; value: string; bg: string; textDark?: boolean; visible: boolean }) {
   return (
-    <div className={`glass flex items-center gap-3 rounded-xl p-4 shadow-sm ${bg} ${textDark ? "text-gray-900" : "text-white"}`}>
+    <div className={`glass flex items-center gap-3 rounded-xl p-4 shadow-sm ${bg} ${textDark ? "text-gray-900 dark:text-gray-100" : "text-white"}`}>
       <Icon className="h-8 w-8 opacity-80" />
       <div>
         <p className="text-xs opacity-80">{label}</p>

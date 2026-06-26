@@ -3,57 +3,110 @@
 @tailwind utilities;
 
 :root {
-  --background: #f0f2f8;
+  --bg: #f0f2f8;
+  --text: #212529;
+  --text-muted: #6c757d;
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-shadow: rgba(31, 38, 135, 0.07);
+  --glass-card-bg: rgba(255, 255, 255, 0.6);
+  --glass-card-border: rgba(255, 255, 255, 0.4);
+  --glass-input-bg: rgba(255, 255, 255, 0.5);
+  --glass-input-border: rgba(255, 255, 255, 0.3);
+  --glass-sidebar-bg: linear-gradient(135deg, rgba(30, 60, 114, 0.88), rgba(42, 82, 152, 0.82));
+  --glass-sidebar-border: rgba(255, 255, 255, 0.1);
+  --overlay-bg: rgba(0, 0, 0, 0.3);
+  --scrollbar-thumb: #cbd2e0;
+}
+
+.dark {
+  --bg: #0f111a;
+  --text: #e4e6f0;
+  --text-muted: #9ca3af;
+  --glass-bg: rgba(20, 22, 40, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-shadow: rgba(0, 0, 0, 0.2);
+  --glass-card-bg: rgba(20, 22, 40, 0.65);
+  --glass-card-border: rgba(255, 255, 255, 0.06);
+  --glass-input-bg: rgba(20, 22, 40, 0.5);
+  --glass-input-border: rgba(255, 255, 255, 0.08);
+  --glass-sidebar-bg: linear-gradient(135deg, rgba(8, 10, 25, 0.92), rgba(15, 20, 45, 0.88));
+  --glass-sidebar-border: rgba(255, 255, 255, 0.05);
+  --overlay-bg: rgba(0, 0, 0, 0.6);
+  --scrollbar-thumb: #2a2d3e;
 }
 
 @layer components {
   .glass {
-    background: rgba(255, 255, 255, 0.55);
+    background: var(--glass-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.07);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px var(--glass-shadow);
   }
   .glass-dark {
-    background: rgba(30, 60, 114, 0.75);
+    background: var(--glass-sidebar-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--glass-sidebar-border);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   }
+  .dark .glass-dark {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
   .glass-card {
-    background: rgba(255, 255, 255, 0.6);
+    background: var(--glass-card-bg);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 0 4px 24px rgba(31, 38, 135, 0.06);
+    border: 1px solid var(--glass-card-border);
+    box-shadow: 0 4px 24px var(--glass-shadow);
   }
   .glass-input {
-    background: rgba(255, 255, 255, 0.5);
+    background: var(--glass-input-bg);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid var(--glass-input-border);
   }
   .glass-sidebar {
-    background: linear-gradient(135deg, rgba(30, 60, 114, 0.88), rgba(42, 82, 152, 0.82));
+    background: var(--glass-sidebar-bg);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    border-right: 1px solid var(--glass-sidebar-border);
   }
 }
 
-html,
-body {
-  height: 100%;
-}
+html, body { height: 100%; }
 
 body {
-  background: var(--background);
-  color: #212529;
+  background: var(--bg);
+  color: var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
-/* Improvement #4 — bigger, more accessible FAB on mobile */
+/* Dark mode text overrides — keeps existing text-gray-* classes working */
+.dark .text-gray-900 { color: #e4e6f0 !important; }
+.dark .text-gray-800 { color: #d1d5db !important; }
+.dark .text-gray-700 { color: #c4c8d4 !important; }
+.dark .text-gray-600 { color: #9ca3af !important; }
+.dark .text-gray-500 { color: #7c8294 !important; }
+.dark .text-gray-400 { color: #6b7280 !important; }
+.dark .text-gray-300 { color: #4b5563 !important; }
+.dark .text-gray-200 { color: #374151 !important; }
+.dark .bg-gray-50 { background-color: rgba(255,255,255,0.03) !important; }
+.dark .bg-gray-100 { background-color: rgba(255,255,255,0.05) !important; }
+.dark .hover\:bg-gray-50:hover { background-color: rgba(255,255,255,0.04) !important; }
+.dark .hover\:bg-gray-100:hover { background-color: rgba(255,255,255,0.06) !important; }
+.dark .border-gray-100 { border-color: rgba(255,255,255,0.08) !important; }
+.dark .border-gray-200 { border-color: rgba(255,255,255,0.06) !important; }
+.dark .border-gray-300 { border-color: rgba(255,255,255,0.1) !important; }
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255,255,255,0.08) !important; }
+.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255,255,255,0.06) !important; }
+
+/* Improve text rendering in dark mode */
+.dark body { color-scheme: dark; }
+
+/* FAB */
 .fab {
   position: fixed;
   right: 1rem;
@@ -70,18 +123,11 @@ body {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 @media (max-width: 640px) {
-  .fab {
-    width: 4.5rem;
-    height: 4.5rem;
-    right: 1rem;
-    bottom: 1.5rem;
-  }
+  .fab { width: 4.5rem; height: 4.5rem; right: 1rem; bottom: 1.5rem; }
 }
-.fab:active {
-  transform: scale(0.92);
-}
+.fab:active { transform: scale(0.92); }
 
-/* Print styles */
+/* Print */
 @media print {
   body * { visibility: hidden; }
   .print-area, .print-area * { visibility: visible; }
@@ -91,7 +137,7 @@ body {
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: #cbd2e0; border-radius: 8px; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 8px; }
 
 /* Logo zoom */
 @keyframes kp-logo-zoom {

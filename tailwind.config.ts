@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./src/app/**/*.{ts,tsx}",
     "./src/components/**/*.{ts,tsx}",
@@ -8,7 +9,6 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Bootstrap-compatible palette (spec: recreate Bootstrap 5.3 style)
         brand: {
           DEFAULT: "#1e3c72",
           light: "#2a5298",

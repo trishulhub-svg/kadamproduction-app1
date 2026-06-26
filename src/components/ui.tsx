@@ -78,7 +78,7 @@ export function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLS
 }
 
 export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
-  return <label className={cn("mb-1 block text-sm font-medium text-gray-700", className)} {...props} />;
+  return <label className={cn("mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300", className)} {...props} />;
 }
 
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
@@ -87,13 +87,13 @@ export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
 
 export function Badge({ className, tone = "gray", ...props }: React.HTMLAttributes<HTMLSpanElement> & { tone?: string }) {
   const tones: Record<string, string> = {
-    gray: "bg-gray-100 text-gray-700",
-    green: "bg-emerald-100 text-emerald-700",
-    yellow: "bg-amber-100 text-amber-800",
-    red: "bg-red-100 text-red-700",
-    blue: "bg-blue-100 text-blue-700",
-    purple: "bg-purple-100 text-purple-700",
-    dark: "bg-gray-800 text-white",
+    gray: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200",
+    green: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+    yellow: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+    red: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+    blue: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+    purple: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+    dark: "bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800",
   };
   return <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold", tones[tone] ?? tones.gray, className)} {...props} />;
 }
@@ -115,8 +115,8 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/30 p-4 backdrop-blur-sm sm:p-8">
       <div className={cn("glass relative w-full max-w-lg rounded-2xl my-8", className)}>
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-white/10">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
           <button onClick={onClose} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="Close">
             <X className="h-5 w-5" />
           </button>

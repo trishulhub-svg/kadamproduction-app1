@@ -5,6 +5,7 @@ import { getDashboardStats, countAssignedOrders } from "@/lib/queries";
 import { StatCard } from "@/components/StatCard";
 import { Card } from "@/components/ui";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -33,8 +34,11 @@ export default async function DashboardPage() {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-gray-900">Kadam Production</h1>
-        <span className="rounded-lg bg-kp-primary px-3 py-1.5 text-sm font-semibold text-white">ADMIN</span>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Kadam Production</h1>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <span className="rounded-lg bg-kp-primary px-3 py-1.5 text-sm font-semibold text-white">ADMIN</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

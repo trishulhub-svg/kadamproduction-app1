@@ -18,6 +18,7 @@ import {
   Film,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "./ThemeToggle";
 
 type NavItem = { label: string; href: string; icon: typeof LayoutDashboard; tone?: "warning" | "info" | "danger" };
 
@@ -111,6 +112,11 @@ export function Sidebar({
           );
         })}
       </nav>
+
+      {/* Theme toggle */}
+      <div className="px-3 pb-1">
+        <ThemeToggle className="w-full justify-center" />
+      </div>
 
       {/* Footer */}
       <div className="border-t border-white/10 p-3">
