@@ -121,7 +121,7 @@ export function Sidebar({
           <LogOut className="h-5 w-5" />
           Logout
         </button>
-        <p className="mt-2 px-3 text-[10px] text-gray-400">© {new Date().getFullYear()} Kadam Production / Powered by Trishulhub</p>
+        <p className="mt-2 px-3 text-[10px] text-gray-400">© {new Date().getFullYear()} Kadam Production / Powered by <a href="https://trishulhub.in" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-500">Trishulhub</a></p>
       </div>
     </aside>
   );

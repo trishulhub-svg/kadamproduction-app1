@@ -11,9 +11,10 @@ import { Search, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { getOrderDetail } from "@/lib/orders-queries";
 
 type Detail = NonNullable<Awaited<ReturnType<typeof getOrderDetail>>>;
+type SubCat = { id: number; name: string; categoryId: number };
 
 export function ManageOrderView({ detail }: { detail: Detail }) {
-  const { order, orderItems, assignments, allItems, itemAvail, paid } = detail;
+  const { order, orderItems, assignments, allItems, itemAvail, paid, subcategories } = detail;
   const due = Math.max(0, Number(order.totalBudget) - paid);
 
   const [statusOpen, setStatusOpen] = useState(false);
@@ -71,6 +72,7 @@ export function ManageOrderView({ detail }: { detail: Detail }) {
           orderItems={orderItems}
           allItems={allItems}
           itemAvail={itemAvail}
+          subcategories={subcategories}
         />
       </div>
 
@@ -135,21 +137,27 @@ function InventorySection({
   orderItems,
   allItems,
   itemAvail,
+  subcategories,
 }: {
   orderId: number;
   orderItems: { id: number; itemId: number; name: string; barcode: string; quantity: number }[];
-  allItems: { id: number; name: string; quantity: number; status: string }[];
+  allItems: { id: number; name: string; quantity: number; status: string; subcategoryId: number | null; subcategoryName: string | null }[];
   itemAvail: Record<number, number>;
+  subcategories: SubCat[];
 }) {
-  // Improvement #8a: global search + don't show all by default
   const [query, setQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
-  const [draft, setDraft] = useState<Record<number, number>>({}); // live minus preview
+  const [draft, setDraft] = useState<Record<number, number>>({});
   const [pending, setPending] = useState(false);
+  const [subFilter, setSubFilter] = useState<string>("");
 
-  const filtered = showAll || query.length >= 2
-    ? allItems.filter((i) => (query ? i.name.toLowerCase().includes(query.toLowerCase()) : true))
-    : [];
+  const filtered = (showAll || query.length >= 2
+    ? allItems.filter((i) => {
+        if (query && !i.name.toLowerCase().includes(query.toLowerCase())) return false;
+        if (subFilter && String(i.subcategoryId) !== subFilter) return false;
+        return true;
+      })
+    : []);
 
   async function reserve() {
     const payload = Object.entries(draft)
@@ -183,12 +191,19 @@ function InventorySection({
         )}
       </div>
 
-      {/* Global search (#8a) */}
-      <Label>Add items by search</Label>
+      {/* Subcategory filter */}
+      <Label>Filter by subcategory</Label>
+      <Select value={subFilter} onChange={(e) => setSubFilter(e.target.value)} className="mb-2">
+        <option value="">All subcategories</option>
+        {subcategories.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+      </Select>
+
+      {/* Search */}
+      <Label>Or search by name</Label>
       <div className="relative mb-2">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <Input
-          placeholder="Type at least 2 chars to search…"
+          placeholder="Type at least 2 chars…"
           className="pl-9"
           value={query}
           onChange={(e) => { setQuery(e.target.value); setShowAll(false); }}
@@ -207,12 +222,14 @@ function InventorySection({
           {filtered.map((it) => {
             const avail = itemAvail[it.id] ?? it.quantity;
             const draftQty = draft[it.id] ?? 0;
-            // Improvement #8: live minus preview (real stock untouched until reserve)
             const previewQty = Math.max(0, avail - draftQty);
             return (
               <div key={it.id} className="rounded-lg border border-gray-100 px-3 py-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{it.name}</span>
+                  <div className="min-w-0">
+                    <span className="text-sm font-medium">{it.name}</span>
+                    <span className="ml-2 text-xs text-gray-400">{it.subcategoryName ?? ""}</span>
+                  </div>
                   <span className="text-xs text-gray-500">
                     Available: <span className={previewQty < avail ? "font-bold text-kp-warning" : "text-kp-success"}>{previewQty}</span> / {it.quantity}
                   </span>

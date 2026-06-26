@@ -29,8 +29,14 @@ export async function createEmployee(input: { name: string; email: string; phone
 export async function resetPassword(userId: number, newPassword: string) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
+  const emp = await db.select({ name: schema.users.name, email: schema.users.email }).from(schema.users).where(eq(schema.users.id, userId)).limit(1).then((r) => r[0]);
+  if (!emp) throw new Error("Employee not found.");
   await db.update(schema.users).set({ password: await hashPassword(newPassword) }).where(eq(schema.users.id, userId));
   revalidatePath("/employees");
+  try {
+    const { sendPasswordResetEmail } = await import("@/lib/email");
+    await sendPasswordResetEmail({ to: emp.email, name: emp.name, password: newPassword });
+  } catch {}
 }
 
 export async function deleteEmployee(userId: number) {

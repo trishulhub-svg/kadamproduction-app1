@@ -76,7 +76,7 @@ export async function getOrderDetail(orderId: number) {
   const order = await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).limit(1).then((r) => r[0]);
   if (!order) return null;
 
-  const [orderItems, assignments, transactions, allItems, employees, committedRows] = await Promise.all([
+  const [orderItems, assignments, transactions, allItems, employees, subcategories, committedRows] = await Promise.all([
     db
       .select({
         id: schema.orderItems.id,
@@ -96,10 +96,12 @@ export async function getOrderDetail(orderId: number) {
       .where(eq(schema.orderAssignments.orderId, orderId)),
     db.select().from(schema.finance).where(eq(schema.finance.orderId, orderId)),
     db
-      .select({ id: schema.items.id, name: schema.items.name, quantity: schema.items.quantity, status: schema.items.status })
+      .select({ id: schema.items.id, name: schema.items.name, subcategoryId: schema.items.subcategoryId, quantity: schema.items.quantity, status: schema.items.status, subcategoryName: schema.subcategories.name })
       .from(schema.items)
+      .leftJoin(schema.subcategories, eq(schema.items.subcategoryId, schema.subcategories.id))
       .where(and(isNull(schema.items.deletedAt), inArray(schema.items.status, ["available", "busy"]))),
     db.select({ id: schema.users.id, name: schema.users.name }).from(schema.users).where(and(eq(schema.users.role, "employee"), isNull(schema.users.deletedAt))),
+    db.select({ id: schema.subcategories.id, name: schema.subcategories.name, categoryId: schema.subcategories.categoryId }).from(schema.subcategories),
     // Single batch query: committed qty per item across active orders, excluding this order
     db
       .select({
@@ -123,5 +125,5 @@ export async function getOrderDetail(orderId: number) {
   }
 
   const paid = transactions.filter((t) => t.type === "income").reduce((a, t) => a + Number(t.amount), 0);
-  return { order, orderItems, assignments, transactions, allItems, employees, itemAvail, paid };
+  return { order, orderItems, assignments, transactions, allItems, employees, subcategories, itemAvail, paid };
 }

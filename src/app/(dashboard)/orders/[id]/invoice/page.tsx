@@ -89,7 +89,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
 
         <div className="mt-8 border-t border-black pt-4 text-center text-xs text-gray-600">
           <p>Thank you for choosing Kadam Production.</p>
-          <p className="mt-1">© {new Date().getFullYear()} Kadam Production / Powered by Trishulhub</p>
+          <p className="mt-1">© {new Date().getFullYear()} Kadam Production / Powered by <a href="https://trishulhub.in" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-800">Trishulhub</a></p>
         </div>
       </div>
     </div>

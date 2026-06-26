@@ -67,7 +67,7 @@ export function LoginForm({ logoUrl }: { logoUrl: string | null }) {
           </form>
         </div>
         <p className="mt-4 text-center text-xs text-white/80">
-          © {year} Kadam Production / Powered by Trishulhub
+          &copy; {year} Kadam Production / Powered by <a href="https://trishulhub.in" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Trishulhub</a>
         </p>
       </div>
     </div>
