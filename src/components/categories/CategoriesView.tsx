@@ -250,7 +250,6 @@ function ItemModal({ categories, subcategories, onClose }: { categories: MasterC
     try {
       await createCategoryItem({
         name: String(f.get("name")),
-        categoryId: Number(f.get("categoryId")),
         subcategoryId: Number(f.get("subcategoryId")) || 0,
         description: String(f.get("description") || ""),
         quantity: Number(f.get("quantity")) || 1,

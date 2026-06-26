@@ -25,8 +25,13 @@ export async function updateCategory(id: number, input: { name?: string; descrip
 export async function deleteCategory(id: number) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
-  const inUse = await db.select({ id: schema.items.id }).from(schema.items).where(eq(schema.items.categoryId, id)).limit(1);
-  if (inUse.length > 0) throw new Error("Cannot delete category with items. Move items to another category first.");
+  const [directItems, itemsInSubs] = await Promise.all([
+    db.select({ id: schema.items.id }).from(schema.items).where(eq(schema.items.categoryId, id)).limit(1),
+    db.select({ id: schema.items.id }).from(schema.items).innerJoin(schema.subcategories, eq(schema.items.subcategoryId, schema.subcategories.id)).where(eq(schema.subcategories.categoryId, id)).limit(1),
+  ]);
+  if (directItems.length > 0 || itemsInSubs.length > 0) {
+    throw new Error("Cannot delete a category that has items in its sub-categories.");
+  }
   await db.delete(schema.categories).where(eq(schema.categories.id, id));
   revalidatePath("/categories");
 }
@@ -61,14 +66,13 @@ export async function deleteSubcategory(id: number) {
 }
 
 // ── Item (under sub-category) ──
-export async function createCategoryItem(input: { name: string; categoryId: number; subcategoryId: number; description?: string; quantity: number }) {
+export async function createCategoryItem(input: { name: string; subcategoryId: number; description?: string; quantity: number }) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
   if (!input.subcategoryId) throw new Error("Items must be created under a sub-category.");
   const name = input.name.trim().toUpperCase();
   await db.insert(schema.items).values({
     name,
-    categoryId: input.categoryId || null,
     subcategoryId: input.subcategoryId,
     description: input.description?.trim() || null,
     quantity: Number(input.quantity) || 0,
