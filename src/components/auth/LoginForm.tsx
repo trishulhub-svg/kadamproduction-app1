@@ -11,7 +11,7 @@ export function LoginForm({ logoUrl }: { logoUrl: string | null }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-brand-gradient p-4">
       <div className="w-full max-w-md">
-        <div className="rounded-2xl bg-white p-8 shadow-2xl">
+        <div className="glass rounded-2xl p-8 shadow-2xl">
           <div className="mb-6 text-center">
             {logoUrl ? (
               <div className="mx-auto mb-3 overflow-hidden">
@@ -43,7 +43,7 @@ export function LoginForm({ logoUrl }: { logoUrl: string | null }) {
                 type="email"
                 required
                 autoFocus
-                className="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-kp-primary focus:ring-2 focus:ring-blue-400/30"
+                className="glass-input h-11 w-full rounded-lg px-3 text-sm outline-none focus:border-kp-primary focus:ring-2 focus:ring-blue-400/30"
                 placeholder="you@example.com"
               />
             </div>
@@ -53,7 +53,7 @@ export function LoginForm({ logoUrl }: { logoUrl: string | null }) {
                 name="password"
                 type="password"
                 required
-                className="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-kp-primary focus:ring-2 focus:ring-blue-400/30"
+                className="glass-input h-11 w-full rounded-lg px-3 text-sm outline-none focus:border-kp-primary focus:ring-2 focus:ring-blue-400/30"
                 placeholder="••••••••"
               />
             </div>

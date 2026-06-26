@@ -45,7 +45,7 @@ export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInp
   return (
     <input
       className={cn(
-        "h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none transition focus:border-kp-primary focus:ring-2 focus:ring-blue-400/30",
+        "glass-input h-10 w-full rounded-lg px-3 text-sm outline-none transition focus:border-kp-primary focus:ring-2 focus:ring-blue-400/30",
         className
       )}
       {...props}
@@ -57,7 +57,7 @@ export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<H
   return (
     <textarea
       className={cn(
-        "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-kp-primary focus:ring-2 focus:ring-blue-400/30",
+        "glass-input w-full rounded-lg px-3 py-2 text-sm outline-none transition focus:border-kp-primary focus:ring-2 focus:ring-blue-400/30",
         className
       )}
       {...props}
@@ -69,7 +69,7 @@ export function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLS
   return (
     <select
       className={cn(
-        "h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none transition focus:border-kp-primary focus:ring-2 focus:ring-blue-400/30",
+        "glass-input h-10 w-full rounded-lg px-3 text-sm outline-none transition focus:border-kp-primary focus:ring-2 focus:ring-blue-400/30",
         className
       )}
       {...props}
@@ -82,7 +82,7 @@ export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLab
 }
 
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("rounded-xl border border-gray-200 bg-white shadow-sm", className)} {...props} />;
+  return <div className={cn("glass-card rounded-xl", className)} {...props} />;
 }
 
 export function Badge({ className, tone = "gray", ...props }: React.HTMLAttributes<HTMLSpanElement> & { tone?: string }) {
@@ -113,8 +113,8 @@ export function Modal({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div className={cn("relative w-full max-w-lg rounded-2xl bg-white shadow-xl my-8", className)}>
+    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/30 p-4 backdrop-blur-sm sm:p-8">
+      <div className={cn("glass relative w-full max-w-lg rounded-2xl my-8", className)}>
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
           <button onClick={onClose} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="Close">
@@ -129,7 +129,7 @@ export function Modal({
 
 export function EmptyState({ title, hint }: { title: string; hint?: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-gray-300 bg-white py-12 text-center">
+    <div className="glass-card rounded-xl py-12 text-center">
       <p className="text-sm font-semibold text-gray-600">{title}</p>
       {hint && <p className="mt-1 text-xs text-gray-400">{hint}</p>}
     </div>

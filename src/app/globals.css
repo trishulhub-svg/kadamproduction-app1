@@ -3,7 +3,43 @@
 @tailwind utilities;
 
 :root {
-  --background: #f5f7fb;
+  --background: #f0f2f8;
+}
+
+@layer components {
+  .glass {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.07);
+  }
+  .glass-dark {
+    background: rgba(30, 60, 114, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  }
+  .glass-card {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 4px 24px rgba(31, 38, 135, 0.06);
+  }
+  .glass-input {
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+  .glass-sidebar {
+    background: linear-gradient(135deg, rgba(30, 60, 114, 0.88), rgba(42, 82, 152, 0.82));
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+  }
 }
 
 html,
@@ -29,7 +65,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.5);
+  background: linear-gradient(135deg, #1e3c72, #2a5298);
+  box-shadow: 0 10px 25px rgba(30, 60, 114, 0.4);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 @media (max-width: 640px) {
@@ -44,40 +81,21 @@ body {
   transform: scale(0.92);
 }
 
-/* Print styles — improvement #9 (B/W invoice, print-friendly) */
+/* Print styles */
 @media print {
-  body * {
-    visibility: hidden;
-  }
-  .print-area,
-  .print-area * {
-    visibility: visible;
-  }
-  .print-area {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-  }
-  .no-print {
-    display: none !important;
-  }
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area { position: absolute; inset: 0; width: 100%; }
+  .no-print { display: none !important; }
 }
 
-/* Scrollbar polish */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd2e0;
-  border-radius: 8px;
-}
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #cbd2e0; border-radius: 8px; }
 
-/* Logo zoom in/out animation (login page) */
+/* Logo zoom */
 @keyframes kp-logo-zoom {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.15); }
 }
-.kp-logo-zoom {
-  animation: kp-logo-zoom 3s ease-in-out infinite;
-}
+.kp-logo-zoom { animation: kp-logo-zoom 3s ease-in-out infinite; }

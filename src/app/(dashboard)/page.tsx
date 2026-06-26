@@ -49,7 +49,7 @@ export default async function DashboardPage() {
         <Card className="overflow-hidden border-l-4 border-l-kp-success p-4 shadow-sm">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-600">Active Events</p>
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/20">
               <CalendarClock className="h-6 w-6 text-emerald-600" />
             </div>
             <div className="text-sm text-gray-600">
@@ -62,7 +62,7 @@ export default async function DashboardPage() {
         <Card className="overflow-hidden border-l-4 border-l-kp-primary p-4 shadow-sm">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-blue-600">Inventory</p>
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/20">
               <FolderOpen className="h-6 w-6 text-blue-600" />
             </div>
             <div className="text-sm text-gray-600">
@@ -75,7 +75,7 @@ export default async function DashboardPage() {
         <Card className="overflow-hidden border-l-4 border-l-kp-warning p-4 shadow-sm">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-600">Team</p>
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/20">
               <Users className="h-6 w-6 text-amber-600" />
             </div>
             <div className="text-sm text-gray-600">
