@@ -33,19 +33,40 @@ function apply(t: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Initialize synchronously from what the inline script already set on <html>
   const initialDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
   const [theme, setThemeState] = useState<Theme>(getStored);
   const [resolved, setResolved] = useState<"light" | "dark">(initialDark ? "dark" : "light");
 
   const setTheme = useCallback((t: Theme) => {
-    setThemeState(t);
-    setResolved(resolve(t));
-    try { localStorage.setItem("kp-theme", t); } catch {}
-    apply(t);
+    const el = document.getElementById("theme-overlay");
+    if (el) {
+      el.style.display = "block";
+      el.style.animation = "none";
+      void el.offsetHeight;
+      el.style.animation = "theme-reveal-in 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards";
+
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          setThemeState(t);
+          setResolved(resolve(t));
+          try { localStorage.setItem("kp-theme", t); } catch {}
+          apply(t);
+
+          el.style.animation = "none";
+          void el.offsetHeight;
+          el.style.animation = "theme-reveal-out 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards";
+
+          setTimeout(() => { el.style.display = "none"; }, 400);
+        }, 300);
+      });
+    } else {
+      setThemeState(t);
+      setResolved(resolve(t));
+      try { localStorage.setItem("kp-theme", t); } catch {}
+      apply(t);
+    }
   }, []);
 
-  // Listen for system preference changes
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = () => {
@@ -59,5 +80,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  return <Ctx.Provider value={{ theme, resolved, setTheme }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={{ theme, resolved, setTheme }}>
+      {children}
+      <div
+        id="theme-overlay"
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 99999,
+          background: "var(--bg)",
+          display: "none",
+          pointerEvents: "none",
+          clipPath: "circle(0% at 50% 50%)",
+        }}
+      />
+    </Ctx.Provider>
+  );
 }
