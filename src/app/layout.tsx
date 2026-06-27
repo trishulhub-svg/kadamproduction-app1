@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Agentation } from "agentation";
 import { ThemeProviderWrapper } from "@/components/ThemeProviderWrapper";
 import "./globals.css";
 
@@ -44,7 +43,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProviderWrapper>
           {children}
         </ThemeProviderWrapper>
-        <Agentation />
         <script
           dangerouslySetInnerHTML={{
             __html: `

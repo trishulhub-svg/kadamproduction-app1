@@ -1,28 +1,26 @@
 # Kadam Production — Progress Record
 
-## Last Session: June 27, 2026
+## Last Session: June 27, 2026 (Final)
 
 ### Commits
-1. **`7764685`** — `theme-anim, sidebar-hide, collapsible-filters, invoice-redesign, edit-order`
-2. **`390bb96`** — `notifications, setup-done, draft-save, notifications-table`
+1. `7764685` — theme-anim, sidebar-hide, collapsible-filters, invoice-redesign, edit-order
+2. `390bb96` — notifications, setup-done, draft-save, notifications-table
+3. `2fb80b4` — responsive-audit, my-tasks-sort, setup-done-migration
+4. `2c86750` — employee-deactivate
 
-### Completed This Session
-- **Theme animation**: Diagonal wipe reveal (1s in, 1.1s hold, 1s out) with `clip-path` polygon
-- **Sidebar auto-hide on mobile**: `onNavClick` callback closes drawer after nav link click
-- **Collapsible order filters on mobile**: Toggle button to show/hide the filter bar
-- **Invoice redesign**: KADAM PRODUCTION + INVOICE side-by-side, mobile responsive, `kadamproduction.in` link
-- **Edit order modal**: Button + modal with all fields (client, phone, email, dates, budget, address, category)
-- **Action feedback animations**: `action-pop` and `fade-up` CSS keyframes for button/modal entrance
-- **Notifications system**: `notifications` table (setup route migration), `notification-actions.ts` server actions, `NotificationBell` component in header (mobile + desktop)
-- **Auto-notifications**: Creating notification when employee assigned to order
-- **Setup Done button**: Employees can mark setup complete from `/my-tasks`, admin gets notified
-- **Draft order saving**: localStorage auto-save/restore for the Create Order form
-
-### Pending / Next Session
-- Hit `/api/setup` on Vercel to run notifications + `setup_done` migration
-- Responsive audit across all pages (mobile + tablet)
-- Employee notification dismiss-all binding
-- Sort employee orders by setup date on `/my-tasks`
+### Completed All Sessions
+- Theme animation (diagonal wipe reveal)
+- Sidebar auto-hide on mobile nav click
+- Collapsible order filters on mobile
+- Invoice redesign (side-by-side header, responsive, link)
+- Edit order modal (all fields)
+- Action feedback animations
+- Notifications system (bell, auto-create on assign)
+- Setup Done button for employees
+- Draft order form auto-save (localStorage)
+- Employee deactivation (active/inactive toggle + login block)
+- Responsive audit (SMTP form, scan buttons)
+- My-tasks sorted by setup date
 
 ### Key Info
 - **Vercel**: `kadamproduction-opencode.vercel.app`
@@ -30,4 +28,7 @@
 - **Admin**: `admin@kadamproduction.in` / `admin123` (change password on first login)
 - **Protocol**: Trishulhub v14.0.0 at `C:\trishul-protocol`
 - **Branch**: `main` → remote `origin/main`
-- **Color system**: Pure Black & White monochrome (zero violet/purple/indigo/cyan)
+- **Color system**: Pure Black & White monochrome
+
+### Reminder
+- Hit `/api/setup` on Vercel after deploy to run latest migrations (notifications, setup_done, active column)
