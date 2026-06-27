@@ -3,99 +3,117 @@
 @tailwind utilities;
 
 :root {
+  /* Background & Text */
   --bg: #f1f5f9;
+  --bg-secondary: #e2e8f0;
   --text: #0f172a;
-  --text-muted: #64748b;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
+  /* Accent */
   --accent: #7c3aed;
   --accent-hover: #6d28d9;
-  --accent-light: rgba(124, 58, 237, 0.1);
-  --accent-glow: rgba(124, 58, 237, 0.25);
+  --accent-light: rgba(124, 58, 237, 0.08);
+  --accent-glow: rgba(124, 58, 237, 0.2);
 
-  --glass-bg: rgba(255, 255, 255, 0.6);
-  --glass-border: rgba(255, 255, 255, 0.5);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
-  --glass-card-bg: rgba(255, 255, 255, 0.65);
-  --glass-card-border: rgba(255, 255, 255, 0.5);
-  --glass-card-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
-  --glass-input-bg: rgba(255, 255, 255, 0.5);
-  --glass-input-border: rgba(226, 232, 240, 0.6);
-  --glass-sidebar-bg: rgba(255, 255, 255, 0.55);
-  --glass-sidebar-border: rgba(255, 255, 255, 0.4);
-  --glass-sidebar-shadow: 0 0 0 1px rgba(0,0,0,0.02);
+  /* Glass - higher opacity for readability */
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.7);
+  --glass-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 8px 32px rgba(0, 0, 0, 0.04);
+
+  --glass-card-bg: rgba(255, 255, 255, 0.8);
+  --glass-card-border: rgba(226, 232, 240, 0.6);
+  --glass-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 4px 24px rgba(0, 0, 0, 0.04);
+
+  --glass-input-bg: rgba(255, 255, 255, 0.6);
+  --glass-input-border: #e2e8f0;
+
+  --glass-sidebar-bg: rgba(255, 255, 255, 0.8);
+  --glass-sidebar-border: rgba(226, 232, 240, 0.8);
+
   --overlay-bg: rgba(15, 23, 42, 0.3);
   --scrollbar-thumb: #cbd5e1;
-  --nav-hover: rgba(124, 58, 237, 0.08);
-  --nav-active-bg: rgba(124, 58, 237, 0.12);
+  --nav-hover: rgba(124, 58, 237, 0.06);
+  --nav-active-bg: rgba(124, 58, 237, 0.1);
   --nav-active-text: #7c3aed;
-  --brand-gradient: linear-gradient(135deg, #6d28d9 0%, #7c3aed 50%, #8b5cf6 100%);
+
+  --brand-gradient: linear-gradient(135deg, #7c3aed 0%, #6d28d9 50%, #5b21b6 100%);
+  --brand-gradient-dark: linear-gradient(135deg, #1e1b4b 0%, #2e1065 50%, #4c1d95 100%);
 }
 
 .dark {
   --bg: #080a12;
+  --bg-secondary: #0f111a;
   --text: #f1f5f9;
-  --text-muted: #64748b;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+
   --accent: #a78bfa;
   --accent-hover: #c4b5fd;
   --accent-light: rgba(167, 139, 250, 0.1);
-  --accent-glow: rgba(167, 139, 250, 0.2);
+  --accent-glow: rgba(167, 139, 250, 0.15);
 
-  --glass-bg: rgba(12, 14, 25, 0.6);
-  --glass-border: rgba(255, 255, 255, 0.04);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  --glass-card-bg: rgba(12, 14, 25, 0.65);
-  --glass-card-border: rgba(255, 255, 255, 0.04);
-  --glass-card-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
-  --glass-input-bg: rgba(12, 14, 25, 0.5);
-  --glass-input-border: rgba(255, 255, 255, 0.06);
-  --glass-sidebar-bg: rgba(8, 10, 18, 0.7);
+  --glass-bg: rgba(12, 14, 25, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  --glass-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 8px 32px rgba(0, 0, 0, 0.3);
+
+  --glass-card-bg: rgba(12, 14, 25, 0.8);
+  --glass-card-border: rgba(255, 255, 255, 0.05);
+  --glass-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.15), 0 4px 24px rgba(0, 0, 0, 0.25);
+
+  --glass-input-bg: rgba(12, 14, 25, 0.6);
+  --glass-input-border: rgba(255, 255, 255, 0.08);
+
+  --glass-sidebar-bg: rgba(8, 10, 18, 0.85);
   --glass-sidebar-border: rgba(255, 255, 255, 0.04);
-  --glass-sidebar-shadow: 0 0 0 1px rgba(255,255,255,0.03);
+
   --overlay-bg: rgba(0, 0, 0, 0.6);
   --scrollbar-thumb: #1e293b;
-  --nav-hover: rgba(167, 139, 250, 0.08);
+  --nav-hover: rgba(167, 139, 250, 0.06);
   --nav-active-bg: rgba(167, 139, 250, 0.12);
   --nav-active-text: #a78bfa;
-  --brand-gradient: linear-gradient(135deg, #6d28d9 0%, #7c3aed 50%, #8b5cf6 100%);
+
+  --brand-gradient: linear-gradient(135deg, #1e1b4b 0%, #2e1065 50%, #4c1d95 100%);
+  --brand-gradient-dark: linear-gradient(135deg, #1e1b4b 0%, #2e1065 50%, #4c1d95 100%);
 }
 
 @layer components {
   .glass {
     background: var(--glass-bg);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
   }
   .glass-card {
     background: var(--glass-card-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--glass-card-border);
     box-shadow: var(--glass-card-shadow);
   }
   .glass-input {
     background: var(--glass-input-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border: 1px solid var(--glass-input-border);
   }
   .glass-sidebar {
     background: var(--glass-sidebar-bg);
-    backdrop-filter: blur(28px);
-    -webkit-backdrop-filter: blur(28px);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     border-right: 1px solid var(--glass-sidebar-border);
-    box-shadow: var(--glass-sidebar-shadow);
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.02);
   }
   .glass-sidebar .brand-header {
     background: var(--brand-gradient);
-    border-bottom: 1px solid rgba(255,255,255,0.08);
     position: relative;
   }
   .glass-sidebar .brand-header::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 100%);
+    background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 100%);
     pointer-events: none;
   }
 }
@@ -108,7 +126,7 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-/* Dark mode overrides */
+/* Dark mode text/background overrides */
 .dark .text-gray-900 { color: #f1f5f9 !important; }
 .dark .text-gray-800 { color: #e2e8f0 !important; }
 .dark .text-gray-700 { color: #cbd5e1 !important; }
@@ -165,6 +183,6 @@ body {
 /* Logo zoom */
 @keyframes kp-logo-zoom {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.15); }
+  50% { transform: scale(1.12); }
 }
 .kp-logo-zoom { animation: kp-logo-zoom 3s ease-in-out infinite; }

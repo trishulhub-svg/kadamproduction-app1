@@ -43,7 +43,7 @@ export function DashboardShell({
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile top bar */}
-        <header className="sticky top-0 z-[80] flex items-center gap-3 bg-gradient-to-br from-violet-700 to-violet-900 px-4 py-3 text-white shadow-lg shadow-violet-900/20 lg:hidden">
+        <header className="sticky top-0 z-[80] flex items-center gap-3 bg-gradient-to-br from-violet-800 to-violet-950 px-4 py-3 text-white shadow-lg lg:hidden">
           <button onClick={() => setOpen(true)} aria-label="Open menu" className="rounded-lg p-1.5 hover:bg-white/10">
             <Menu className="h-6 w-6" />
           </button>

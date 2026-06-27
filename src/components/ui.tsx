@@ -31,7 +31,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none focus:outline-none focus:ring-2 focus:ring-blue-400/40",
+        "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30",
         variants[variant],
         sizes[size],
         className
@@ -57,7 +57,7 @@ export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<H
   return (
     <textarea
       className={cn(
-        "glass-input w-full rounded-lg px-3 py-2 text-sm outline-none transition focus:border-kp-primary focus:ring-2 focus:ring-blue-400/30",
+        "glass-input w-full rounded-lg px-3 py-2 text-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20",
         className
       )}
       {...props}
@@ -69,7 +69,7 @@ export function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLS
   return (
     <select
       className={cn(
-        "glass-input h-10 w-full rounded-lg px-3 text-sm outline-none transition focus:border-kp-primary focus:ring-2 focus:ring-blue-400/30",
+        "glass-input h-10 w-full rounded-lg px-3 text-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20",
         className
       )}
       {...props}

@@ -1,4 +1,3 @@
-// src/components/Sidebar.tsx
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -20,7 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
 
-type NavItem = { label: string; href: string; icon: typeof LayoutDashboard; tone?: "warning" | "info" | "danger" };
+type NavItem = { label: string; href: string; icon: typeof LayoutDashboard };
 
 const ADMIN_NAV: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -30,16 +29,16 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Finance", href: "/finance", icon: LineChart },
   { label: "Employees", href: "/employees", icon: Users },
   { label: "Teams", href: "/teams", icon: UsersRound },
-  { label: "Scan Item", href: "/scan", icon: ScanLine, tone: "warning" },
-  { label: "Change Password", href: "/change-password", icon: KeyRound, tone: "warning" },
   { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Scan Item", href: "/scan", icon: ScanLine },
+  { label: "Change Password", href: "/change-password", icon: KeyRound },
 ];
 
 const EMPLOYEE_NAV: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "Scan Item", href: "/scan", icon: ScanLine, tone: "warning" },
-  { label: "My Tasks", href: "/my-tasks", icon: ListChecks, tone: "info" },
-  { label: "Change Password", href: "/change-password", icon: KeyRound, tone: "warning" },
+  { label: "Scan Item", href: "/scan", icon: ScanLine },
+  { label: "My Tasks", href: "/my-tasks", icon: ListChecks },
+  { label: "Change Password", href: "/change-password", icon: KeyRound },
 ];
 
 export function Sidebar({
@@ -59,12 +58,11 @@ export function Sidebar({
   const nav = (role === "admin" ? ADMIN_NAV : EMPLOYEE_NAV).filter(
     (item) => item.href !== "/scan" || role === "admin" || scanEnabled
   );
-  const brand = role === "admin" ? "KP Admin" : "KP Staff";
 
   return (
     <aside className="glass-sidebar flex h-full w-64 flex-col">
-      {/* Brand header with gradient */}
-      <div className="brand-header px-5 py-5 text-white">
+      {/* Brand header */}
+      <div className="brand-header px-5 py-5">
         <div className="flex items-center gap-3">
           {logoUrl ? (
             <img src={logoUrl} alt="Logo" className="h-11 w-11 rounded-xl object-contain ring-2 ring-white/20" />
@@ -74,11 +72,11 @@ export function Sidebar({
             </div>
           )}
           <div className="min-w-0">
-            <div className="truncate text-base font-bold text-white drop-shadow-sm">{brand}</div>
+            <div className="truncate text-base font-bold text-white drop-shadow-sm">KP Admin</div>
             <div className="truncate text-xs text-white/60">Kadam Production</div>
           </div>
         </div>
-        <div className="mt-3 truncate rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white/70 ring-1 ring-white/10">
+        <div className="mt-3 truncate rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white/70">
           <span className="text-white/50">Signed in as </span>
           <span className="font-semibold text-white">{name}</span>
         </div>
@@ -94,22 +92,14 @@ export function Sidebar({
               key={item.href}
               href={item.href}
               className={cn(
-                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
                 active
                   ? "bg-[var(--nav-active-bg)] text-[var(--nav-active-text)] shadow-sm"
                   : "text-gray-600 hover:bg-[var(--nav-hover)] hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
               )}
             >
-              <Icon className={cn("h-5 w-5 shrink-0 transition-transform", active && "scale-110")} />
+              <Icon className={cn("h-5 w-5 shrink-0", active && "scale-110")} />
               <span className="truncate">{item.label}</span>
-              {item.tone && !active && (
-                <span className={cn(
-                  "ml-auto h-1.5 w-1.5 rounded-full",
-                  item.tone === "warning" && "bg-amber-400",
-                  item.tone === "info" && "bg-cyan-400",
-                  item.tone === "danger" && "bg-red-400",
-                )} />
-              )}
             </Link>
           );
         })}
@@ -117,7 +107,7 @@ export function Sidebar({
 
       {/* Theme toggle */}
       <div className="px-3 pb-1">
-        <ThemeToggle className="w-full justify-center" />
+        <ThemeToggle />
       </div>
 
       {/* Footer */}
@@ -129,7 +119,12 @@ export function Sidebar({
           <LogOut className="h-5 w-5" />
           Logout
         </button>
-        <p className="mt-2 px-3 text-[10px] text-gray-400 dark:text-gray-600">© {new Date().getFullYear()} Kadam Production / Powered by <a href="https://trishulhub.in" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-400">Trishulhub</a></p>
+        <p className="mt-2 px-3 text-[10px] text-gray-400 dark:text-gray-600">
+          &copy; {new Date().getFullYear()} Kadam Production / Powered by{" "}
+          <a href="https://trishulhub.in" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-400">
+            Trishulhub
+          </a>
+        </p>
       </div>
     </aside>
   );
