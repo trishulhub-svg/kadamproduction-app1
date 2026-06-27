@@ -8,23 +8,26 @@ export async function GET() {
       return new NextResponse(null, { status: 204 });
     }
 
-    const res = await fetch(logoUrl, { signal: AbortSignal.timeout(5000) });
-    if (!res.ok) {
-      return new NextResponse(null, { status: 204 });
-    }
+    // Build an SVG that wraps the logo in a square icon.
+    // The image fills the full canvas at its natural aspect ratio.
+    // Any unused space gets the white background — no distortion, maximum size.
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#ffffff" rx="96"/>
+  <image href="${escapeXml(logoUrl)}" xlink:href="${escapeXml(logoUrl)}" x="0" y="0" width="512" height="512" preserveAspectRatio="xMidYMid meet"/>
+</svg>`;
 
-    const contentType = res.headers.get("content-type") || "image/png";
-    const buffer = await res.arrayBuffer();
-
-    return new NextResponse(buffer, {
+    return new NextResponse(svg, {
       status: 200,
       headers: {
-        "Content-Type": contentType,
-        "Content-Length": buffer.byteLength.toString(),
+        "Content-Type": "image/svg+xml",
         "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
       },
     });
   } catch {
     return new NextResponse(null, { status: 204 });
   }
+}
+
+function escapeXml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
