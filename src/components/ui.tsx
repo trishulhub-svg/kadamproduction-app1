@@ -12,15 +12,15 @@ export function Button({
   size?: "sm" | "md" | "lg" | "icon";
 }) {
   const variants: Record<string, string> = {
-    primary: "bg-kp-primary hover:bg-blue-700 text-white",
-    secondary: "bg-kp-secondary hover:bg-gray-600 text-white",
+    primary: "bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white shadow-sm shadow-[var(--accent-glow)]",
+    secondary: "bg-gray-500 hover:bg-gray-600 text-white",
     success: "bg-kp-success hover:bg-emerald-700 text-white",
-    warning: "bg-kp-warning hover:bg-yellow-500 text-black",
+    warning: "bg-kp-warning hover:bg-amber-600 text-white",
     danger: "bg-kp-danger hover:bg-red-700 text-white",
-    info: "bg-kp-info hover:bg-cyan-500 text-black",
+    info: "bg-kp-info hover:bg-cyan-600 text-white",
     dark: "bg-kp-dark hover:bg-black text-white",
-    outline: "border border-gray-300 bg-white hover:bg-gray-50 text-gray-800",
-    ghost: "hover:bg-gray-100 text-gray-700",
+    outline: "border border-gray-200 bg-white/50 hover:bg-white text-gray-700 dark:border-gray-700 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10",
+    ghost: "hover:bg-[var(--nav-hover)] text-gray-600 dark:text-gray-400",
   };
   const sizes: Record<string, string> = {
     sm: "h-8 px-3 text-sm",
@@ -91,7 +91,7 @@ export function Badge({ className, tone = "gray", ...props }: React.HTMLAttribut
     green: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
     yellow: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
     red: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
-    blue: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+    blue: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
     purple: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
     dark: "bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800",
   };

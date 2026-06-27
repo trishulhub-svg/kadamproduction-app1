@@ -64,10 +64,10 @@ export default async function DashboardPage() {
         </Card>
 
         <Card className="overflow-hidden border-l-4 border-l-kp-primary p-4 shadow-sm">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-blue-600">Inventory</p>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-violet-600">Inventory</p>
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/20">
-              <FolderOpen className="h-6 w-6 text-blue-600" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/20">
+              <FolderOpen className="h-6 w-6 text-violet-600" />
             </div>
             <div className="text-sm text-gray-600">
               <span className="font-semibold text-gray-900">{s.busy}</span> on events<br />

@@ -174,7 +174,7 @@ function ActionBtn({ active, onClick, icon: Icon, label }: { active: boolean; on
     <button
       type="button"
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 rounded-lg border p-2.5 text-xs font-medium transition ${active ? "border-kp-primary bg-blue-50 text-kp-primary ring-2 ring-blue-400/30" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+      className={`flex flex-col items-center gap-1 rounded-lg border p-2.5 text-xs font-medium transition ${active ? "border-kp-primary bg-violet-50 text-kp-primary ring-2 ring-violet-400/30 dark:bg-violet-900/20 dark:ring-violet-500/30" : "border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800/50"}`}
     >
       <Icon className="h-5 w-5" /> {label}
     </button>

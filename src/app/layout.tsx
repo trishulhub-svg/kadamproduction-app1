@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1e40af",
+  themeColor: "#7c3aed",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -29,7 +29,7 @@ const themeScript = `
     d.classList.add('dark');
   }
   var m = document.querySelector('meta[name="theme-color"]');
-  if (m) m.setAttribute('content', d.classList.contains('dark') ? '#0f111a' : '#1e40af');
+  if (m) m.setAttribute('content', d.classList.contains('dark') ? '#0f111a' : '#7c3aed');
 })();
 `;
 

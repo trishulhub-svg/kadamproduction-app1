@@ -13,7 +13,7 @@ export async function GET() {
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#1e40af",
+    theme_color: "#7c3aed",
     orientation: "portrait-primary",
     icons: [
       { src: logoUrl || "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

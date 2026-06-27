@@ -47,15 +47,15 @@ export function CategoriesView({ categories, subcategories, items }: { categorie
             const isOpen = expanded.has(cat.id);
             return (
               <Card key={cat.id} className="overflow-hidden">
-                <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3">
+                <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-violet-50 to-purple-50 px-4 py-3 dark:from-violet-950/30 dark:to-purple-950/30">
                   <button onClick={() => toggle(cat.id)} className="flex flex-1 items-center gap-2 text-left">
                     {isOpen ? <ChevronDown className="h-5 w-5 text-gray-500" /> : <ChevronRight className="h-5 w-5 text-gray-500" />}
-                    <FolderOpen className="h-5 w-5 text-blue-600" />
+                    <FolderOpen className="h-5 w-5 text-violet-600" />
                     <div>
-                      <span className="font-semibold text-gray-900">{cat.name}</span>
-                      {cat.description && <span className="ml-2 truncate text-xs text-gray-500">{cat.description}</span>}
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">{cat.name}</span>
+                      {cat.description && <span className="ml-2 truncate text-xs text-gray-500 dark:text-gray-400">{cat.description}</span>}
                     </div>
-                    <span className="ml-2 shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                    <span className="ml-2 shrink-0 rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
                       {subs.length} sub · {subs.reduce((a, s) => a + itemsOfSub(s.id).length, 0)} items
                     </span>
                   </button>
@@ -150,7 +150,7 @@ function FabMenu({ onSelect }: { onSelect: (t: "master" | "sub" | "item") => voi
             <Layers className="h-4 w-4 text-indigo-500" /> Add Sub-Category
           </button>
           <button onClick={() => { setOpen(false); onSelect("master"); }} className="flex w-44 items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-lg hover:bg-gray-50">
-            <FolderOpen className="h-4 w-4 text-blue-600" /> Add Master Category
+            <FolderOpen className="h-4 w-4 text-violet-600" /> Add Master Category
           </button>
         </div>
       )}

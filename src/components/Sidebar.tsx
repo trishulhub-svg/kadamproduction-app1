@@ -1,4 +1,4 @@
-// src/components/Sidebar.tsx  (Improvement #2: enhanced side menu design; #3: logo)
+// src/components/Sidebar.tsx
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -56,7 +56,6 @@ export function Sidebar({
   onLogout: () => Promise<void>;
 }) {
   const pathname = usePathname();
-  // For employees, filter out Scan Item when scanEnabled is off
   const nav = (role === "admin" ? ADMIN_NAV : EMPLOYEE_NAV).filter(
     (item) => item.href !== "/scan" || role === "admin" || scanEnabled
   );
@@ -64,30 +63,29 @@ export function Sidebar({
 
   return (
     <aside className="glass-sidebar flex h-full w-64 flex-col">
-      {/* Brand header */}
-      <div className="px-5 py-5">
+      {/* Brand header with gradient */}
+      <div className="brand-header px-5 py-5 text-white">
         <div className="flex items-center gap-3">
           {logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt="Logo" className="h-12 w-12 object-contain" />
+            <img src={logoUrl} alt="Logo" className="h-11 w-11 rounded-xl object-contain ring-2 ring-white/20" />
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center">
-              <Film className="h-7 w-7 text-white/80" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15">
+              <Film className="h-6 w-6 text-white" />
             </div>
           )}
           <div className="min-w-0">
-            <div className="truncate text-base font-bold text-white">{brand}</div>
+            <div className="truncate text-base font-bold text-white drop-shadow-sm">{brand}</div>
             <div className="truncate text-xs text-white/60">Kadam Production</div>
           </div>
         </div>
-        <div className="mt-3 truncate rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white/70">
+        <div className="mt-3 truncate rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white/70 ring-1 ring-white/10">
           <span className="text-white/50">Signed in as </span>
           <span className="font-semibold text-white">{name}</span>
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
         {nav.map((item) => {
           const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           const Icon = item.icon;
@@ -96,18 +94,22 @@ export function Sidebar({
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
+                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
                 active
-                  ? "bg-white/15 text-white shadow-sm"
-                  : item.tone === "warning"
-                  ? "text-amber-300 hover:bg-white/10 hover:text-amber-200"
-                  : item.tone === "info"
-                  ? "text-cyan-300 hover:bg-white/10 hover:text-cyan-200"
-                  : "text-white/70 hover:bg-white/10 hover:text-white"
+                  ? "bg-[var(--nav-active-bg)] text-[var(--nav-active-text)] shadow-sm"
+                  : "text-gray-600 hover:bg-[var(--nav-hover)] hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
               )}
             >
-              <Icon className="h-5 w-5 shrink-0" />
+              <Icon className={cn("h-5 w-5 shrink-0 transition-transform", active && "scale-110")} />
               <span className="truncate">{item.label}</span>
+              {item.tone && !active && (
+                <span className={cn(
+                  "ml-auto h-1.5 w-1.5 rounded-full",
+                  item.tone === "warning" && "bg-amber-400",
+                  item.tone === "info" && "bg-cyan-400",
+                  item.tone === "danger" && "bg-red-400",
+                )} />
+              )}
             </Link>
           );
         })}
@@ -119,15 +121,15 @@ export function Sidebar({
       </div>
 
       {/* Footer */}
-      <div className="border-t border-white/10 p-3">
+      <div className="border-t border-gray-100 p-3 dark:border-white/5">
         <button
           onClick={onLogout}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-300 transition hover:bg-white/10 hover:text-red-200"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-500 transition-all hover:bg-red-50 hover:text-red-600 dark:text-gray-400 dark:hover:bg-red-950/30 dark:hover:text-red-400"
         >
           <LogOut className="h-5 w-5" />
           Logout
         </button>
-        <p className="mt-2 px-3 text-[10px] text-white/30">© {new Date().getFullYear()} Kadam Production / Powered by <a href="https://trishulhub.in" target="_blank" rel="noopener noreferrer" className="underline hover:text-white/50">Trishulhub</a></p>
+        <p className="mt-2 px-3 text-[10px] text-gray-400 dark:text-gray-600">© {new Date().getFullYear()} Kadam Production / Powered by <a href="https://trishulhub.in" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-400">Trishulhub</a></p>
       </div>
     </aside>
   );

@@ -325,7 +325,7 @@ function ModeCard({ active, onClick, title, desc }: { active: boolean; onClick: 
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl border p-3 text-left transition ${active ? "border-kp-primary bg-blue-50 ring-2 ring-blue-400/30" : "border-gray-200 bg-white hover:bg-gray-50"}`}
+      className={`rounded-xl border p-3 text-left transition ${active ? "border-kp-primary bg-violet-50 ring-2 ring-violet-400/30 dark:bg-violet-900/20 dark:ring-violet-500/30" : "border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/30 dark:hover:bg-gray-800/50"}`}
     >
       <p className="text-sm font-semibold text-gray-900">{title}</p>
       <p className="mt-1 text-xs text-gray-500">{desc}</p>

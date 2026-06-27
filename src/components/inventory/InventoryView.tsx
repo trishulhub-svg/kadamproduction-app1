@@ -112,12 +112,12 @@ export function InventoryView({ categories, subcategories, items, date, totals }
                     <td className="px-4 py-3 text-gray-600">{it.subcategoryName ?? "—"}</td>
                     <td className="px-4 py-3 font-mono text-xs text-gray-500">
                       {it.barcode}
-                      <button onClick={() => setPrintItem(it)} className="ml-1 text-blue-500 hover:text-blue-700" title="Print barcode"><Printer className="inline h-3.5 w-3.5" /></button>
+                      <button onClick={() => setPrintItem(it)} className="ml-1 text-violet-500 hover:text-violet-700" title="Print barcode"><Printer className="inline h-3.5 w-3.5" /></button>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <span className="font-semibold">{it.quantity}</span>
-                        <button onClick={() => setQtyItem(it)} className="ml-1 rounded px-1.5 text-xs font-bold text-kp-primary hover:bg-blue-50">±</button>
+                        <button onClick={() => setQtyItem(it)} className="ml-1 rounded px-1.5 text-xs font-bold text-kp-primary hover:bg-violet-50 dark:hover:bg-violet-900/20">±</button>
                       </div>
                     </td>
                     <td className="px-4 py-3">

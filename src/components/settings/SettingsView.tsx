@@ -105,7 +105,7 @@ export function SettingsView({ logoUrl, scanEnabled, smtp }: { logoUrl: string |
             )}
           </div>
           <div className="space-y-2">
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-kp-primary px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-kp-primary px-4 py-2 text-sm font-medium text-white hover:bg-violet-700">
               <Upload className="h-4 w-4" /> {pending ? "Uploading…" : "Upload Logo"}
               <input type="file" accept="image/*" onChange={onFile} className="hidden" disabled={pending} />
             </label>
@@ -142,8 +142,8 @@ export function SettingsView({ logoUrl, scanEnabled, smtp }: { logoUrl: string |
 
       <Card className="mt-4 max-w-lg p-5">
         <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50">
-            <Mail className="h-5 w-5 text-blue-600" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-900/20">
+            <Mail className="h-5 w-5 text-violet-600 dark:text-violet-400" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-gray-700">SMTP / Email Settings</h3>
