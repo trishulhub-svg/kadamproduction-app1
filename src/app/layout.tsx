@@ -36,7 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="apple-touch-icon" href="/api/manifest" />
+        <link rel="apple-touch-icon" href="/api/icon" />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
