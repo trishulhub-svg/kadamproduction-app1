@@ -36,7 +36,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="apple-touch-icon" href="/api/icon" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/api/icon" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/api/icon" />
+        <link rel="apple-touch-icon" sizes="120x120" href="/api/icon" />
+        <link rel="apple-touch-icon-precomposed" href="/api/icon" />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
