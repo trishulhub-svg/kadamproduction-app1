@@ -1,7 +1,7 @@
 // src/components/orders/OrdersView.tsx
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTransition, useState } from "react";
+import { useTransition, useState, useEffect } from "react";
 import Link from "next/link";
 import { Search, X } from "lucide-react";
 import { Button, Input, Select, Modal, Label, Card, EmptyState } from "@/components/ui";
@@ -166,9 +166,34 @@ export function OrdersView({ orders, counts, filters, hasFilter, openNew }: Prop
 function CreateModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const DRAFT_KEY = "kp_new_order_draft";
+  useEffect(() => {
+    const saved = localStorage.getItem(DRAFT_KEY);
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        const form = document.querySelector<HTMLFormElement>("#create-order-form");
+        if (form) {
+          Object.entries(data).forEach(([name, value]) => {
+            const el = form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
+            if (el) el.value = String(value);
+          });
+        }
+      } catch { /* ignore corrupt draft */ }
+    }
+  }, []);
+  function saveDraft(name: string) {
+    const form = document.querySelector<HTMLFormElement>("#create-order-form");
+    if (!form) return;
+    const fd = new FormData(form);
+    const data: Record<string, string> = {};
+    fd.forEach((v, k) => { data[k] = String(v); });
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+  }
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setPending(true);
+    localStorage.removeItem(DRAFT_KEY);
     const f = new FormData(e.currentTarget);
     const id = await createOrder({
       clientName: String(f.get("clientName")),
@@ -192,7 +217,7 @@ function CreateModal({ onClose }: { onClose: () => void }) {
   }
   return (
     <Modal open onClose={onClose} title="Create New Order" className="max-w-2xl">
-      <form onSubmit={submit} className="space-y-4">
+      <form id="create-order-form" onSubmit={submit} className="space-y-4" onChange={() => saveDraft("")}>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div><Label>Client Name *</Label><Input name="clientName" required /></div>
           <div><Label>Event Name</Label><Input name="contactPerson" /></div>

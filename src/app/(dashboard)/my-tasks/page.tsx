@@ -1,4 +1,3 @@
-// src/app/(dashboard)/my-tasks/page.tsx
 import { and, eq, isNull, ne } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
@@ -6,6 +5,7 @@ import { Card, EmptyState, Button } from "@/components/ui";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDateDMY } from "@/lib/utils";
 import Link from "next/link";
+import { SetupDoneBtn } from "./SetupDoneBtn";
 
 export default async function MyTasksPage() {
   const user = await getCurrentUser();
@@ -20,6 +20,7 @@ export default async function MyTasksPage() {
       eventTime: schema.orders.eventTime,
       address: schema.orders.address,
       status: schema.orders.status,
+      setupDone: schema.orders.setupDone,
     })
     .from(schema.orderAssignments)
     .innerJoin(schema.orders, eq(schema.orderAssignments.orderId, schema.orders.id))
@@ -43,7 +44,12 @@ export default async function MyTasksPage() {
                 <p>Date: {formatDateDMY(o.eventDate)} {o.eventTime ?? ""}</p>
                 <p>Address: {o.address ?? "—"}</p>
               </div>
-              <Link href="/scan"><Button variant="primary" className="mt-3 w-full">Scan Items</Button></Link>
+              <div className="mt-3 flex gap-2">
+                <Link href="/scan"><Button variant="primary">Scan Items</Button></Link>
+                {o.status !== "completed" && o.status !== "cancelled" && (
+                  <SetupDoneBtn orderId={o.id} done={!!o.setupDone} />
+                )}
+              </div>
             </Card>
           ))}
         </div>

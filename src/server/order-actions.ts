@@ -1,9 +1,11 @@
 // src/server/order-actions.ts
 "use server";
+import { createClient } from "@libsql/client";
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentUser, requireAdmin } from "@/lib/auth";
+import { createNotification } from "./notification-actions";
 import { EVENT_CATEGORIES } from "@/drizzle/schema";
 import type { OrderStatus } from "@/drizzle/schema";
 
@@ -121,9 +123,31 @@ export async function deleteOrder(id: number) {
 export async function saveAssignments(orderId: number, employeeIds: number[]) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
+  const [order] = await db
+    .select({ clientName: schema.orders.clientName })
+    .from(schema.orders)
+    .where(eq(schema.orders.id, orderId))
+    .limit(1)
+    .then((r) => r);
+  const existing = await db
+    .select({ userId: schema.orderAssignments.userId })
+    .from(schema.orderAssignments)
+    .where(eq(schema.orderAssignments.orderId, orderId))
+    .then((r) => r.map((x) => x.userId));
   await db.delete(schema.orderAssignments).where(eq(schema.orderAssignments.orderId, orderId));
   if (employeeIds.length) {
     await db.insert(schema.orderAssignments).values(employeeIds.map((userId) => ({ orderId, userId })));
+    const newly = employeeIds.filter((eid) => !existing.includes(eid));
+    for (const uid of newly) {
+      await createNotification({
+        userId: uid,
+        orderId,
+        type: "order_assigned",
+        title: "New Order Assignment",
+        message: `You have been assigned to "${order?.clientName || "Untitled"}" order.`,
+        link: `/orders/${orderId}`,
+      });
+    }
   }
   revalidatePath(`/orders/${orderId}`);
 }
@@ -152,5 +176,40 @@ export async function unreserveItem(orderId: number, itemId: number) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
   await db.delete(schema.orderItems).where(and(eq(schema.orderItems.orderId, orderId), eq(schema.orderItems.itemId, itemId)));
+  revalidatePath(`/orders/${orderId}`);
+}
+
+export async function markSetupDone(orderId: number) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+  const client = createClient({
+    url: process.env.TURSO_DATABASE_URL!,
+    authToken: process.env.TURSO_AUTH_TOKEN!,
+  });
+  await client.execute({
+    sql: "UPDATE orders SET setup_done = 1 WHERE id = ?",
+    args: [orderId],
+  });
+  // Notify all admins
+  const adminRows = await client.execute({
+    sql: "SELECT id FROM users WHERE role = 'admin' AND deleted_at IS NULL",
+    args: [],
+  });
+  const orderRow = await client.execute({
+    sql: "SELECT client_name FROM orders WHERE id = ?",
+    args: [orderId],
+  });
+  const clientName = (orderRow.rows[0] as any)?.client_name ?? "Untitled";
+  for (const row of adminRows.rows) {
+    await createNotification({
+      userId: Number((row as any).id),
+      orderId,
+      type: "setup_done",
+      title: "Setup Completed",
+      message: `${user.name} marked setup as done for "${clientName}" order.`,
+      link: `/orders/${orderId}`,
+    });
+  }
+  revalidatePath("/my-tasks");
   revalidatePath(`/orders/${orderId}`);
 }

@@ -145,6 +145,18 @@ const MIGRATION_DDL: { sql: string; label: string }[] = [
   )`, label: "subcategories table" },
   { sql: `CREATE INDEX IF NOT EXISTS subcategories_category_idx ON subcategories(category_id)`, label: "subcategories index" },
   { sql: `CREATE INDEX IF NOT EXISTS items_subcategory_idx ON items(subcategory_id)`, label: "items subcategory index" },
+  { sql: `CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    order_id INTEGER REFERENCES orders(id),
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT,
+    link TEXT,
+    read INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`, label: "notifications table" },
+  { sql: `CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications(user_id)`, label: "notifications user index" },
 ];
 
 export async function GET(req: Request) {
@@ -203,6 +215,7 @@ export async function GET(req: Request) {
     const alterStmts = [
       { sql: "ALTER TABLE items ADD COLUMN subcategory_id INTEGER", label: "items.subcategory_id" },
       { sql: "ALTER TABLE items ADD COLUMN description TEXT", label: "items.description" },
+      { sql: "ALTER TABLE orders ADD COLUMN setup_done INTEGER NOT NULL DEFAULT 0", label: "orders.setup_done" },
     ];
     for (const a of alterStmts) {
       try {
