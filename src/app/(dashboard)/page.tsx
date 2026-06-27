@@ -50,11 +50,11 @@ export default async function DashboardPage() {
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="overflow-hidden border-l-4 border-l-kp-success p-4 shadow-sm">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-600">Active Events</p>
+        <Card className="overflow-hidden border-l-4 border-l-gray-400 p-4 shadow-sm">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-600">Active Events</p>
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/20">
-              <CalendarClock className="h-6 w-6 text-emerald-600" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-500/20">
+              <CalendarClock className="h-6 w-6 text-gray-600" />
             </div>
             <div className="text-sm text-gray-600">
               <StatusBadge status="ongoing" /> <span className="font-semibold text-gray-900">{s.ongoingOrders}</span> ongoing<br />
@@ -76,11 +76,11 @@ export default async function DashboardPage() {
           </div>
         </Card>
 
-        <Card className="overflow-hidden border-l-4 border-l-kp-warning p-4 shadow-sm">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-600">Team</p>
+        <Card className="overflow-hidden border-l-4 border-l-gray-400 p-4 shadow-sm">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-600">Team</p>
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/20">
-              <Users className="h-6 w-6 text-amber-600" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-500/20">
+              <Users className="h-6 w-6 text-gray-600" />
             </div>
             <div className="text-sm text-gray-600">
               <span className="font-semibold text-gray-900">{s.employees}</span> employees on staff

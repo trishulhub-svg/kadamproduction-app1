@@ -17,7 +17,7 @@ export function Button({
     success: "bg-kp-success hover:bg-emerald-700 text-white",
     warning: "bg-kp-warning hover:bg-amber-600 text-white",
     danger: "bg-kp-danger hover:bg-red-700 text-white",
-    info: "bg-kp-info hover:bg-cyan-600 text-white",
+    info: "bg-gray-500 hover:bg-gray-600 text-white",
     dark: "bg-kp-dark hover:bg-black text-white",
     outline: "border border-gray-200 bg-white/50 hover:bg-white text-gray-700 dark:border-gray-700 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10",
     ghost: "hover:bg-[var(--nav-hover)] text-gray-600 dark:text-gray-400",

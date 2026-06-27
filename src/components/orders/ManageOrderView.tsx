@@ -300,8 +300,8 @@ function ChangeStatusModal({ orderId, current, onClose }: { orderId: number; cur
 
         {/* Improvement #8b — completion popup (manual vs automatic return) */}
         {completing && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-            <p className="mb-3 text-sm font-semibold text-amber-800">
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
+            <p className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
               Take inventory back to warehouse?
             </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

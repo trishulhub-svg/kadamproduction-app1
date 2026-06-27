@@ -65,20 +65,20 @@ export function Sidebar({
       <div className="brand-header px-5 py-5">
         <div className="flex items-center gap-3">
           {logoUrl ? (
-            <img src={logoUrl} alt="Logo" className="h-11 w-11 rounded-xl object-contain ring-2 ring-white/20" />
+            <img src={logoUrl} alt="Logo" className="h-11 w-11 rounded-xl object-contain ring-2 ring-gray-200 dark:ring-white/20" />
           ) : (
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15">
-              <Film className="h-6 w-6 text-white" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-200 dark:bg-white/15">
+              <Film className="h-6 w-6 text-gray-600 dark:text-white" />
             </div>
           )}
           <div className="min-w-0">
-            <div className="truncate text-base font-bold text-white">KP Admin</div>
-            <div className="truncate text-xs text-white/60">Kadam Production</div>
+            <div className="truncate text-base font-bold text-gray-900 dark:text-white">KP Admin</div>
+            <div className="truncate text-xs text-gray-500 dark:text-white/60">Kadam Production</div>
           </div>
         </div>
-        <div className="mt-3 truncate rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white/70">
-          <span className="text-white/50">Signed in as </span>
-          <span className="font-semibold text-white">{name}</span>
+        <div className="mt-3 truncate rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-500 dark:bg-white/10 dark:text-white/70">
+          <span className="text-gray-400 dark:text-white/50">Signed in as </span>
+          <span className="font-semibold text-gray-900 dark:text-white">{name}</span>
         </div>
       </div>
 
@@ -114,7 +114,7 @@ export function Sidebar({
       <div className="border-t border-gray-100 p-3 dark:border-white/5">
         <button
           onClick={onLogout}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-500 transition-all hover:bg-red-50 hover:text-red-600 dark:text-gray-400 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-500 transition-all hover:bg-[var(--nav-hover)] hover:text-[var(--nav-active-text)] dark:text-gray-400"
         >
           <LogOut className="h-5 w-5" />
           Logout

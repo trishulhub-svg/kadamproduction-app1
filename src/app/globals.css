@@ -100,14 +100,11 @@
     border-right: 1px solid var(--glass-sidebar-border);
   }
   .glass-sidebar .brand-header {
-    background: var(--brand-gradient);
-  }
-  .glass-sidebar .brand-header::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%);
-    pointer-events: none;
+    background: var(--glass-sidebar-bg);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--glass-sidebar-border);
+    position: relative;
   }
 }
 

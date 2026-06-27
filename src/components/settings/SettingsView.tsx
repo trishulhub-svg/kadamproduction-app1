@@ -122,8 +122,8 @@ export function SettingsView({ logoUrl, scanEnabled, smtp }: { logoUrl: string |
       <Card className="mt-4 max-w-lg p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50">
-              <ScanLine className="h-5 w-5 text-amber-600" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-50 dark:bg-gray-800">
+              <ScanLine className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-gray-700">Scan Item Visibility</h3>

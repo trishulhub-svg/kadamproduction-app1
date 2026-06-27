@@ -76,7 +76,7 @@ export function CategoriesView({ categories, subcategories, items }: { categorie
                         <div key={sub.id} className="rounded-lg border border-gray-100">
                           <div className="flex items-center justify-between gap-2 bg-gray-50 px-3 py-2">
                             <div className="flex items-center gap-2">
-                              <Layers className="h-4 w-4 text-indigo-500" />
+                              <Layers className="h-4 w-4 text-gray-500" />
                               <span className="text-sm font-medium text-gray-800">{sub.name}</span>
                               {sub.description && <span className="text-xs text-gray-400">{sub.description}</span>}
                             </div>
@@ -147,7 +147,7 @@ function FabMenu({ onSelect }: { onSelect: (t: "master" | "sub" | "item") => voi
             <Package className="h-4 w-4 text-gray-500 dark:text-gray-400" /> Add Item
           </button>
           <button onClick={() => { setOpen(false); onSelect("sub"); }} className="flex w-44 items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:shadow-gray-900/50 dark:hover:bg-gray-700">
-            <Layers className="h-4 w-4 text-indigo-500 dark:text-indigo-400" /> Add Sub-Category
+            <Layers className="h-4 w-4 text-gray-500 dark:text-gray-400" /> Add Sub-Category
           </button>
           <button onClick={() => { setOpen(false); onSelect("master"); }} className="flex w-44 items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:shadow-gray-900/50 dark:hover:bg-gray-700">
             <FolderOpen className="h-4 w-4 text-gray-600" /> Add Master Category

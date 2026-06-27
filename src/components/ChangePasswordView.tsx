@@ -13,7 +13,7 @@ export function ChangePasswordView() {
   return (
     <Card className="max-w-md p-5">
       {forced && (
-        <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800 font-medium">
+        <div className="mb-4 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-sm text-gray-700 font-medium dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
           Your password must be changed before continuing.
         </div>
       )}
@@ -22,7 +22,7 @@ export function ChangePasswordView() {
         <div><Label>New Password</Label><Input name="new" type="password" required minLength={6} /></div>
         <div><Label>Confirm New Password</Label><Input name="confirm" type="password" required minLength={6} /></div>
         {state && !state.ok && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-kp-danger">{state.error}</div>}
-        {state && state.ok && <div className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-kp-success">Password changed successfully.</div>}
+        {state && state.ok && <div className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-300">Password changed successfully.</div>}
         <Button type="submit" className="w-full" disabled={pending}>{pending ? "Updating…" : "Update Password"}</Button>
       </form>
     </Card>
