@@ -18,13 +18,15 @@ export default async function MyTasksPage() {
       contactPerson: schema.orders.contactPerson,
       eventDate: schema.orders.eventDate,
       eventTime: schema.orders.eventTime,
+      setupDate: schema.orders.setupDate,
       address: schema.orders.address,
       status: schema.orders.status,
       setupDone: schema.orders.setupDone,
     })
     .from(schema.orderAssignments)
     .innerJoin(schema.orders, eq(schema.orderAssignments.orderId, schema.orders.id))
-    .where(and(eq(schema.orderAssignments.userId, user.id), isNull(schema.orders.deletedAt), ne(schema.orders.status, "cancelled")));
+    .where(and(eq(schema.orderAssignments.userId, user.id), isNull(schema.orders.deletedAt), ne(schema.orders.status, "cancelled")))
+    .orderBy(schema.orders.setupDate);
 
   return (
     <div>

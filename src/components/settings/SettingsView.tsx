@@ -151,7 +151,7 @@ export function SettingsView({ logoUrl, scanEnabled, smtp }: { logoUrl: string |
           </div>
         </div>
         <form onSubmit={saveSmtp} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div><Label>SMTP Host</Label><Input placeholder="smtp.gmail.com" value={smtpData.host} onChange={(e) => setSmtpData((s) => ({ ...s, host: e.target.value }))} /></div>
             <div><Label>Port</Label><Input placeholder="587" value={smtpData.port} onChange={(e) => setSmtpData((s) => ({ ...s, port: e.target.value }))} /></div>
           </div>

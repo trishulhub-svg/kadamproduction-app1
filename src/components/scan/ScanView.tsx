@@ -115,7 +115,7 @@ export function ScanView({ ongoing }: { ongoing: { id: number; clientName: strin
         <form onSubmit={submit} className="space-y-4">
           <div>
             <Label>Action</Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <ActionBtn active={action === "checkout"} onClick={() => setAction("checkout")} icon={ArrowRightLeft} label="Move to Event" />
               <ActionBtn active={action === "checkin"} onClick={() => setAction("checkin")} icon={Undo2} label="Return to Stock" />
               <ActionBtn active={action === "damaged"} onClick={() => setAction("damaged")} icon={AlertTriangle} label="Mark Damaged" />
@@ -142,7 +142,7 @@ export function ScanView({ ongoing }: { ongoing: { id: number; clientName: strin
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Button type="submit" disabled={pending}>{pending ? "Processing…" : "Submit Scan"}</Button>
             {!cameraOn ? (
               <Button type="button" variant="info" onClick={startCamera}><Camera className="h-4 w-4" /> Scan via Camera</Button>
