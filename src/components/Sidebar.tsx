@@ -67,10 +67,10 @@ export function Sidebar({
       <div className="brand-header px-5 py-5">
         <div className="flex items-center gap-3">
           {logoUrl ? (
-            <img src={logoUrl} alt="Logo" className="h-11 w-11 rounded-xl object-contain ring-2 ring-gray-200 dark:ring-white/20" />
+            <img src={logoUrl} alt="Logo" className="h-10 w-auto max-w-[160px] rounded-lg object-contain" />
           ) : (
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-200 dark:bg-white/15">
-              <Film className="h-6 w-6 text-gray-600 dark:text-white" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-200 dark:bg-white/15">
+              <Film className="h-5 w-5 text-gray-600 dark:text-white" />
             </div>
           )}
           <div className="min-w-0">

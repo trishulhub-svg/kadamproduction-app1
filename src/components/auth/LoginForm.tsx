@@ -13,11 +13,11 @@ export function LoginForm({ logoUrl }: { logoUrl: string | null }) {
         <div className="glass rounded-2xl p-8 shadow-2xl">
           <div className="mb-6 text-center">
             {logoUrl ? (
-              <div className="mx-auto mb-3 overflow-hidden">
+              <div className="mx-auto mb-4 flex items-center justify-center">
                 <img
                   src={logoUrl}
                   alt="Kadam Production"
-                  className="kp-logo-zoom mx-auto h-20 w-20 rounded-2xl object-contain"
+                  className="kp-logo-zoom mx-auto h-auto max-h-28 w-auto max-w-[280px] rounded-xl object-contain"
                 />
               </div>
             ) : (

@@ -15,9 +15,8 @@ export async function GET() {
     theme_color: "#0f172a",
     orientation: "portrait-primary",
     icons: [
-      { src: logoUrl ? "/api/icon" : "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: logoUrl ? "/api/icon" : "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-      { src: logoUrl ? "/api/icon" : "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: logoUrl ? "/api/icon" : "/icon-192.png", sizes: "192x192", type: logoUrl ? "image/svg+xml" : "image/png", purpose: "any" },
+      { src: logoUrl ? "/api/icon" : "/icon-512.png", sizes: "512x512", type: logoUrl ? "image/svg+xml" : "image/png", purpose: "any maskable" },
     ],
   };
 
