@@ -72,13 +72,24 @@
   --brand-gradient: linear-gradient(135deg, #0a0c12 0%, #05070a 50%, #000000 100%);
 }
 
-@keyframes theme-reveal-in {
-  from { clip-path: circle(0% at 50% 50%); }
-  to { clip-path: circle(100% at 50% 50%); }
+@keyframes theme-wipe-in {
+  from { clip-path: polygon(0 0, 0 0, 0 100%, 0 100%); }
+  to { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
 }
-@keyframes theme-reveal-out {
-  from { clip-path: circle(100% at 50% 50%); }
-  to { clip-path: circle(0% at 50% 50%); }
+@keyframes theme-wipe-out {
+  from { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+  to { clip-path: polygon(100% 0, 100% 0, 100% 100%, 100% 100%); }
+}
+
+@keyframes action-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @layer components {

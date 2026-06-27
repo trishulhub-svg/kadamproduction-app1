@@ -33,6 +33,7 @@ export function OrdersView({ orders, counts, filters, hasFilter, openNew }: Prop
   const sp = useSearchParams();
   const [, startTransition] = useTransition();
   const [createOpen, setCreateOpen] = useState(openNew);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   function setFilter(key: string, value: string) {
     const next = new URLSearchParams(sp.toString());
@@ -55,9 +56,16 @@ export function OrdersView({ orders, counts, filters, hasFilter, openNew }: Prop
         </div>
       </div>
 
-      {/* Filter bar (improvement #5) */}
+      {/* Filter bar — collapsible on mobile */}
       <Card className="mb-4 p-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <button onClick={() => setFilterOpen(!filterOpen)} className="flex w-full items-center justify-between text-left lg:hidden">
+          <span className="text-sm font-semibold text-gray-700">
+            {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : "Filters"}
+          </span>
+          <svg className={`h-5 w-5 text-gray-500 transition-transform ${filterOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+        </button>
+        <div className={`${filterOpen || "hidden"} mt-3 lg:mt-0 lg:block`}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div>
             <Label>Status</Label>
             <Select value={filters.status || ""} onChange={(e) => setFilter("status", e.target.value)}>
@@ -97,6 +105,7 @@ export function OrdersView({ orders, counts, filters, hasFilter, openNew }: Prop
             <Button variant="ghost" size="sm" onClick={clearFilters}><X className="h-4 w-4" /> Clear Filters</Button>
           </div>
         )}
+        </div>
       </Card>
 
       {/* Smart empty state (#5) */}

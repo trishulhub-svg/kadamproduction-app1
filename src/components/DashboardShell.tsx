@@ -32,7 +32,7 @@ export function DashboardShell({
         <div className="fixed inset-0 z-[90] lg:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-0 h-full">
-            <Sidebar role={role} name={name} logoUrl={logoUrl} scanEnabled={scanEnabled} onLogout={logout} />
+            <Sidebar role={role} name={name} logoUrl={logoUrl} scanEnabled={scanEnabled} onLogout={logout} onNavClick={() => setOpen(false)} />
           </div>
           <button className="absolute right-4 top-4 rounded-lg bg-white p-2 shadow dark:bg-gray-800" onClick={() => setOpen(false)}>
             <X className="h-5 w-5" />

@@ -43,7 +43,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       el.style.display = "block";
       el.style.animation = "none";
       void el.offsetHeight;
-      el.style.animation = "theme-reveal-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards";
+      el.style.animation = "theme-wipe-in 1s cubic-bezier(0.65, 0, 0.35, 1) forwards";
 
       requestAnimationFrame(() => {
         setTimeout(() => {
@@ -54,10 +54,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
           el.style.animation = "none";
           void el.offsetHeight;
-          el.style.animation = "theme-reveal-out 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards";
+          el.style.animation = "theme-wipe-out 1s cubic-bezier(0.65, 0, 0.35, 1) forwards";
 
-          setTimeout(() => { el.style.display = "none"; }, 700);
-        }, 500);
+          setTimeout(() => { el.style.display = "none"; }, 1200);
+        }, 1100);
       });
     } else {
       setThemeState(t);

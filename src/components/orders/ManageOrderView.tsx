@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button, Input, Label, Select, Modal, Card } from "@/components/ui";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EVENT_CATEGORIES, ORDER_STATUS } from "@/drizzle/schema";
-import { updateOrderStatus, saveAssignments, reserveItems, unreserveItem } from "@/server/order-actions";
+import { updateOrderStatus, saveAssignments, reserveItems, unreserveItem, updateOrder } from "@/server/order-actions";
 import { formatINR, formatDateDMY } from "@/lib/utils";
 import { Search, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { getOrderDetail } from "@/lib/orders-queries";
@@ -18,6 +18,7 @@ export function ManageOrderView({ detail }: { detail: Detail }) {
   const due = Math.max(0, Number(order.totalBudget) - paid);
 
   const [statusOpen, setStatusOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [amountsVisible, setAmountsVisible] = useState(false);
 
   return (
@@ -40,6 +41,7 @@ export function ManageOrderView({ detail }: { detail: Detail }) {
             {amountsVisible ? "Hide" : "Show"}
           </button>
           <StatusBadge status={order.status} />
+          <Button variant="outline" onClick={() => setEditOpen(true)}>Edit</Button>
           <Button variant="primary" onClick={() => setStatusOpen(true)}>Change Status</Button>
           <Link href={`/orders/${order.id}/invoice`} target="_blank"><Button variant="success">Invoice</Button></Link>
         </div>
@@ -76,6 +78,12 @@ export function ManageOrderView({ detail }: { detail: Detail }) {
         />
       </div>
 
+      {editOpen && (
+        <EditOrderModal
+          order={order}
+          onClose={() => setEditOpen(false)}
+        />
+      )}
       {statusOpen && (
         <ChangeStatusModal
           orderId={order.id}
@@ -271,6 +279,59 @@ function UnreserveBtn({ orderId, itemId }: { orderId: number; itemId: number }) 
     >
       {pending ? "…" : "Remove"}
     </Button>
+  );
+}
+
+function EditOrderModal({ order, onClose }: { order: Detail["order"]; onClose: () => void }) {
+  const [pending, setPending] = useState(false);
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setPending(true);
+    const f = new FormData(e.currentTarget);
+    const input: Record<string, unknown> = {
+      clientName: String(f.get("clientName")),
+      contactPerson: String(f.get("contactPerson") || ""),
+      contactPhone: String(f.get("contactPhone") || ""),
+      contactEmail: String(f.get("contactEmail") || ""),
+      eventDate: String(f.get("eventDate") || ""),
+      eventTime: String(f.get("eventTime") || ""),
+      setupDate: String(f.get("setupDate") || ""),
+      setupTime: String(f.get("setupTime") || ""),
+      address: String(f.get("address") || ""),
+      billingAddress: String(f.get("billingAddress") || ""),
+      totalBudget: Number(f.get("totalBudget") || 0),
+      eventCategory: String(f.get("eventCategory") || ""),
+    };
+    await updateOrder(order.id, input);
+    onClose();
+  }
+  return (
+    <Modal open onClose={onClose} title={`Edit Order #${order.id}`}>
+      <form onSubmit={submit} className="max-h-[70vh] space-y-4 overflow-y-auto">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div><Label>Client Name</Label><Input name="clientName" defaultValue={order.clientName} required /></div>
+          <div><Label>Contact Person</Label><Input name="contactPerson" defaultValue={order.contactPerson ?? ""} /></div>
+          <div><Label>Phone</Label><Input name="contactPhone" defaultValue={order.contactPhone ?? ""} /></div>
+          <div><Label>Email</Label><Input name="contactEmail" defaultValue={order.contactEmail ?? ""} type="email" /></div>
+          <div><Label>Event Date</Label><Input name="eventDate" defaultValue={order.eventDate ?? ""} type="date" /></div>
+          <div><Label>Event Time</Label><Input name="eventTime" defaultValue={order.eventTime ?? ""} type="time" /></div>
+          <div><Label>Setup Date</Label><Input name="setupDate" defaultValue={order.setupDate ?? ""} type="date" /></div>
+          <div><Label>Setup Time</Label><Input name="setupTime" defaultValue={order.setupTime ?? ""} type="time" /></div>
+          <div><Label>Event Category</Label>
+            <Select name="eventCategory" defaultValue={order.eventCategory ?? ""}>
+              {EVENT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </Select>
+          </div>
+          <div><Label>Total Budget (\u20B9)</Label><Input name="totalBudget" type="number" min={0} defaultValue={order.totalBudget} /></div>
+        </div>
+        <div><Label>Event Address</Label><textarea name="address" defaultValue={order.address ?? ""} rows={2} className="glass-input w-full rounded-lg px-3 py-2 text-sm outline-none" /></div>
+        <div><Label>Billing Address</Label><textarea name="billingAddress" defaultValue={order.billingAddress ?? ""} rows={2} className="glass-input w-full rounded-lg px-3 py-2 text-sm outline-none" /></div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={pending}>{pending ? "Saving\u2026" : "Save Changes"}</Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
