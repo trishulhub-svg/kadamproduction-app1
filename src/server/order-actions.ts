@@ -25,6 +25,7 @@ export async function createOrder(input: {
   totalBudget?: number;
   advancePayment?: number;
   eventCategory?: string;
+  gstEnabled?: boolean;
 }) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
@@ -50,6 +51,7 @@ export async function createOrder(input: {
       totalBudget: budget,
       status: "upcoming",
       eventCategory: (EVENT_CATEGORIES as readonly string[]).includes(input.eventCategory || "") ? (input.eventCategory as typeof EVENT_CATEGORIES[number]) : "Other",
+      gstEnabled: input.gstEnabled ?? false,
     })
     .returning({ id: schema.orders.id });
 
@@ -72,15 +74,20 @@ export async function createOrder(input: {
 export async function updateOrder(id: number, input: Record<string, unknown>) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
-  const patch: Record<string, unknown> = {};
-  for (const k of ["clientName", "contactPerson", "contactPhone", "contactEmail", "transportContactName", "transportContactPhone", "eventDate", "eventTime", "setupDate", "setupTime", "address", "billingAddress"]) {
-    if (input[k] !== undefined) patch[k] = input[k] || null;
+  try {
+    const patch: Record<string, unknown> = {};
+    for (const k of ["clientName", "contactPerson", "contactPhone", "contactEmail", "transportContactName", "transportContactPhone", "eventDate", "eventTime", "setupDate", "setupTime", "address", "billingAddress"]) {
+      if (input[k] !== undefined) patch[k] = input[k] || null;
+    }
+    if (input.totalBudget !== undefined) patch.totalBudget = Number(input.totalBudget || 0);
+    if (input.eventCategory !== undefined && (EVENT_CATEGORIES as readonly string[]).includes(String(input.eventCategory))) patch.eventCategory = input.eventCategory;
+    await db.update(schema.orders).set(patch).where(eq(schema.orders.id, id));
+    revalidatePath("/orders");
+    revalidatePath(`/orders/${id}`);
+  } catch (err) {
+    console.error("updateOrder error:", err);
+    throw new Error("Failed to update order. Please try again.");
   }
-  if (input.totalBudget !== undefined) patch.totalBudget = Number(input.totalBudget || 0);
-  if (input.eventCategory !== undefined && (EVENT_CATEGORIES as readonly string[]).includes(String(input.eventCategory))) patch.eventCategory = input.eventCategory;
-  await db.update(schema.orders).set(patch).where(eq(schema.orders.id, id));
-  revalidatePath("/orders");
-  revalidatePath(`/orders/${id}`);
 }
 
 /** Check if an email is already used by another order. */
@@ -97,6 +104,45 @@ export async function checkEmailDuplicate(email: string, excludeOrderId?: number
     .where(and(...conds))
     .limit(5);
   return rows;
+}
+
+/** Send invoice email to the order's contact email. */
+export async function sendInvoiceEmail(orderId: number) {
+  const user = await requireAdmin();
+  if (!user) throw new Error("Unauthorized");
+  const order = await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).limit(1).then((r) => r[0]);
+  if (!order) throw new Error("Order not found.");
+  if (!order.contactEmail) throw new Error("Order has no contact email.");
+  const { formatOrderNumber } = await import("@/lib/invoice-number");
+  const { formatINR } = await import("@/lib/utils");
+  const txns = await db.select().from(schema.finance).where(eq(schema.finance.orderId, orderId));
+  const paid = txns.filter((t) => t.type === "income").reduce((a, t) => a + Number(t.amount), 0);
+  const total = Number(order.totalBudget);
+  const due = Math.max(0, total - paid);
+  const orderNum = formatOrderNumber(order.id, order.createdAt);
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://kadamproduction-opencode.vercel.app";
+  const invoiceUrl = `${baseUrl}/orders/${orderId}/invoice`;
+  const html = `
+    <div style="max-width:500px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
+      <div style="text-align:center;padding:24px 0">
+        <h2 style="margin:0;color:#1e40af">Kadam Production</h2>
+        <p style="color:#6b7280;font-size:13px">Invoice — ${orderNum}</p>
+      </div>
+      <p>Hello <strong>${order.clientName}</strong>,</p>
+      <p>Thank you for choosing Kadam Production. Here is your invoice summary:</p>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0">
+        <tr><td style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:600;background:#f9fafb">Order</td><td style="padding:8px 12px;border:1px solid #e5e7eb">${orderNum}</td></tr>
+        <tr><td style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:600;background:#f9fafb">Total Amount</td><td style="padding:8px 12px;border:1px solid #e5e7eb">${formatINR(total)}</td></tr>
+        <tr><td style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:600;background:#f9fafb">Advance Paid</td><td style="padding:8px 12px;border:1px solid #e5e7eb">${formatINR(paid)}</td></tr>
+        <tr><td style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:600;background:#f9fafb">Balance Due</td><td style="padding:8px 12px;border:1px solid #e5e7eb">${formatINR(due)}</td></tr>
+      </table>
+      <a href="${invoiceUrl}" style="display:inline-block;margin-top:12px;padding:10px 24px;background:#1e40af;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">View Full Invoice</a>
+      <hr style="margin:24px 0;border:none;border-top:1px solid #e5e7eb" />
+      <p style="font-size:12px;color:#6b7280">Kadam Production — ${new Date().getFullYear()}</p>
+    </div>
+  `;
+  const { sendEmail } = await import("@/lib/email");
+  await sendEmail({ to: order.contactEmail, subject: `Invoice ${orderNum} — Kadam Production`, html });
 }
 
 /**

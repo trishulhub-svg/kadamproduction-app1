@@ -20,6 +20,14 @@ export async function getScanEnabled(): Promise<boolean> {
   return v !== "false";
 }
 
+export async function getGstSettings() {
+  const [number, percentage] = await Promise.all([
+    getSetting("gst_number"),
+    getSetting("gst_percentage"),
+  ]);
+  return { number: number ?? "", percentage: percentage ? Number(percentage) : 0 };
+}
+
 export async function getSmtpSettings() {
   const [host, port, user, pass, from] = await Promise.all([
     getSetting("smtp_host"),

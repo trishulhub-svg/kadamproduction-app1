@@ -2,8 +2,8 @@
 "use client";
 import { useState } from "react";
 import { Button, Card, Input, Label } from "@/components/ui";
-import { setLogo, removeLogo, setScanEnabled, saveSmtpSettings, testSmtpSettings } from "@/server/settings-actions";
-import { Upload, Trash2, ScanLine, Mail, Send } from "lucide-react";
+import { setLogo, removeLogo, setScanEnabled, saveSmtpSettings, testSmtpSettings, saveGstSettings } from "@/server/settings-actions";
+import { Upload, Trash2, ScanLine, Mail, Send, Receipt } from "lucide-react";
 
 function resizeImage(file: File, maxDim: number): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -28,8 +28,9 @@ function resizeImage(file: File, maxDim: number): Promise<string> {
 }
 
 type SmtpData = { host: string; port: string; user: string; pass: string; from: string };
+type GstData = { number: string; percentage: number };
 
-export function SettingsView({ logoUrl, scanEnabled, smtp }: { logoUrl: string | null; scanEnabled: boolean; smtp: SmtpData }) {
+export function SettingsView({ logoUrl, scanEnabled, smtp, gst }: { logoUrl: string | null; scanEnabled: boolean; smtp: SmtpData; gst: GstData }) {
   const [preview, setPreview] = useState<string | null>(logoUrl);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +41,9 @@ export function SettingsView({ logoUrl, scanEnabled, smtp }: { logoUrl: string |
   const [smtpMsg, setSmtpMsg] = useState<string | null>(null);
   const [testEmail, setTestEmail] = useState("");
   const [testPending, setTestPending] = useState(false);
+  const [gstData, setGstData] = useState<GstData>(gst);
+  const [gstPending, setGstPending] = useState(false);
+  const [gstMsg, setGstMsg] = useState<string | null>(null);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -87,6 +91,12 @@ export function SettingsView({ logoUrl, scanEnabled, smtp }: { logoUrl: string |
       setSmtpMsg(`Error: ${(err as Error).message}`);
     }
     setTestPending(false);
+  }
+
+  async function saveGst(e: React.FormEvent) {
+    e.preventDefault(); setGstPending(true); setGstMsg(null);
+    try { await saveGstSettings(gstData); setGstMsg("GST settings saved."); } catch (err) { setGstMsg(`Error: ${(err as Error).message}`); }
+    setGstPending(false);
   }
 
   return (
@@ -138,6 +148,28 @@ export function SettingsView({ logoUrl, scanEnabled, smtp }: { logoUrl: string |
             }}
           />
         </div>
+      </Card>
+
+      <Card className="mt-4 max-w-lg p-5">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-50 dark:bg-gray-800">
+            <Receipt className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700">GST Settings</h3>
+            <p className="text-xs text-gray-500">GST number and tax rate for invoices.</p>
+          </div>
+        </div>
+        <form onSubmit={saveGst} className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div><Label>GST Number</Label><Input placeholder="22AAAAA0000A1Z5" value={gstData.number} onChange={(e) => setGstData((s) => ({ ...s, number: e.target.value }))} /></div>
+            <div><Label>GST Percentage</Label><Input type="number" min={0} max={100} placeholder="18" value={gstData.percentage} onChange={(e) => setGstData((s) => ({ ...s, percentage: Number(e.target.value) || 0 }))} /></div>
+          </div>
+          <div className="flex items-center gap-3 pt-1">
+            <Button type="submit" disabled={gstPending}>{gstPending ? "Saving…" : "Save GST"}</Button>
+          </div>
+          {gstMsg && <p className={`text-sm ${gstMsg.startsWith("Error") ? "text-kp-danger" : "text-kp-success"}`}>{gstMsg}</p>}
+        </form>
       </Card>
 
       <Card className="mt-4 max-w-lg p-5">

@@ -4,6 +4,7 @@ import { db, schema } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { formatOrderNumber } from "@/lib/invoice-number";
 import { formatINR, formatDateDMY } from "@/lib/utils";
+import { getGstSettings } from "@/lib/settings";
 import { PrintButton } from "@/components/orders/PrintButton";
 import { WhatsAppButton } from "@/components/orders/WhatsAppButton";
 
@@ -18,13 +19,22 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const txns = await db.select().from(schema.finance).where(eq(schema.finance.orderId, Number(id)));
   const paid = txns.filter((t) => t.type === "income").reduce((a, t) => a + Number(t.amount), 0);
   const total = Number(order.totalBudget);
-  const due = Math.max(0, total - paid);
 
   const orderNum = formatOrderNumber(order.id, order.createdAt);
 
   const billingAddr = (order.billingAddress ?? "").trim();
   const eventAddr = (order.address ?? "").trim();
   const sameAddress = !billingAddr || !eventAddr || billingAddr.toLowerCase() === eventAddr.toLowerCase();
+
+  const showGst = !!(order as any).gstEnabled;
+  let gstNumber = "";
+  let gstPercentage = 0;
+  let gstAmount = 0;
+  if (showGst) {
+    try { const g = await getGstSettings(); gstNumber = g.number; gstPercentage = g.percentage; gstAmount = Math.round(total * gstPercentage / 100); } catch {}
+  }
+  const grandTotal = total + gstAmount;
+  const due = Math.max(0, grandTotal - paid);
 
   return (
     <div className="mx-auto max-w-3xl p-3 sm:p-8">
@@ -34,7 +44,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           Back to Order
         </a>
         <div className="flex gap-2">
-          <WhatsAppButton phone={order.contactPhone ?? ""} orderNum={orderNum} clientName={order.clientName} total={total} paid={paid} due={due} />
+          <WhatsAppButton phone={order.contactPhone ?? ""} orderNum={orderNum} clientName={order.clientName} total={grandTotal} paid={paid} due={due} />
           <PrintButton />
         </div>
       </div>
@@ -93,6 +103,12 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
               <td className="p-2 text-xs sm:text-sm">Total Amount</td>
               <td className="p-2 text-right text-xs sm:text-sm">{formatINR(total)}</td>
             </tr>
+            {showGst && gstPercentage > 0 && (
+              <tr className="border-b border-black">
+                <td className="p-2 text-xs sm:text-sm">GST ({gstPercentage}%)</td>
+                <td className="p-2 text-right text-xs sm:text-sm">{formatINR(gstAmount)}</td>
+              </tr>
+            )}
             <tr className="border-b border-black">
               <td className="p-2 text-xs sm:text-sm">Advance Paid</td>
               <td className="p-2 text-right text-xs sm:text-sm">{formatINR(paid)}</td>
@@ -105,6 +121,10 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             </tr>
           </tfoot>
         </table>
+
+        {showGst && gstNumber && (
+          <p className="mt-2 text-xs text-gray-600">GST Number: {gstNumber}</p>
+        )}
 
         {/* Footer */}
         <div className="mt-6 border-t border-black pt-4 text-center text-xs text-gray-600">

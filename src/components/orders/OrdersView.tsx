@@ -8,7 +8,7 @@ import { Button, Input, Select, Modal, Label, Card, EmptyState } from "@/compone
 import { StatusBadge } from "@/components/StatusBadge";
 import { Fab } from "@/components/Fab";
 import { EVENT_CATEGORIES } from "@/drizzle/schema";
-import { createOrder, deleteOrder, checkEmailDuplicate } from "@/server/order-actions";
+import { createOrder, deleteOrder, checkEmailDuplicate, sendInvoiceEmail } from "@/server/order-actions";
 import type { OrderListRow } from "@/lib/orders-queries";
 import { formatINR, formatDateDMY } from "@/lib/utils";
 
@@ -43,6 +43,11 @@ export function OrdersView({ orders, counts, filters, hasFilter, openNew }: Prop
   }
   function clearFilters() {
     startTransition(() => router.replace("/orders"));
+  }
+  function closeCreateForm() {
+    setCreateOpen(false);
+    const next = new URLSearchParams(sp.toString());
+    if (next.has("new")) { next.delete("new"); router.replace(`/orders?${next.toString()}`); }
   }
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
@@ -156,7 +161,7 @@ export function OrdersView({ orders, counts, filters, hasFilter, openNew }: Prop
       )}
 
       <Fab onClick={() => setCreateOpen(true)} label="New order" />
-      {createOpen && <CreateModal onClose={() => setCreateOpen(false)} />}
+      {createOpen && <CreateModal onClose={closeCreateForm} />}
     </div>
   );
 }
@@ -164,6 +169,8 @@ export function OrdersView({ orders, counts, filters, hasFilter, openNew }: Prop
 function CreateModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [autoSend, setAutoSend] = useState(false);
+  const [gstEnabled, setGstEnabled] = useState(false);
   const DRAFT_KEY = "kp_new_order_draft";
   useEffect(() => {
     const saved = localStorage.getItem(DRAFT_KEY);
@@ -209,8 +216,14 @@ function CreateModal({ onClose }: { onClose: () => void }) {
       totalBudget: Number(f.get("totalBudget") || 0),
       advancePayment: Number(f.get("advancePayment") || 0),
       eventCategory: String(f.get("eventCategory") || "Other"),
+      gstEnabled,
     });
-    if (id) router.push(`/orders/${id}`);
+    if (id) {
+      if (autoSend && String(f.get("contactEmail") || "").trim()) {
+        try { await sendInvoiceEmail(id); } catch { /* email send failure is non-blocking */ }
+      }
+      router.push(`/orders/${id}`);
+    }
     onClose();
   }
   return (
@@ -244,6 +257,10 @@ function CreateModal({ onClose }: { onClose: () => void }) {
             }} />
             <p id="email-case-warn" className="mt-1 text-xs text-kp-warning"></p>
             <p id="email-dup-warn" className="mt-1 text-xs text-kp-warning"></p>
+            <label className="mt-1 flex items-center gap-2 text-sm text-gray-600">
+              <input type="checkbox" checked={autoSend} onChange={(e) => setAutoSend(e.target.checked)} className="h-4 w-4 accent-kp-primary" />
+              Auto-send invoice to this email on creation
+            </label>
           </div>
           <div><Label>Transport Contact Name</Label><Input name="transportContactName" /></div>
           <div><Label>Transport Contact Phone</Label><Input name="transportContactPhone" /></div>
@@ -262,6 +279,10 @@ function CreateModal({ onClose }: { onClose: () => void }) {
           <div><Label>Advance Payment (₹)</Label><Input name="advancePayment" type="number" min={0} defaultValue={0} /></div>
         </div>
         <div><Label>Billing Address</Label><Input name="billingAddress" /></div>
+        <label className="flex items-center gap-2 text-sm text-gray-600">
+          <input type="checkbox" checked={gstEnabled} onChange={(e) => setGstEnabled(e.target.checked)} className="h-4 w-4 accent-kp-primary" />
+          GST Invoice
+        </label>
         <div><Label>Event Address</Label><Input name="address" /></div>
         <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" type="button" onClick={onClose}>Cancel</Button><Button type="submit" disabled={pending}>{pending ? "Creating…" : "Create Order"}</Button></div>
       </form>

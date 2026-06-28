@@ -32,7 +32,11 @@ export async function deleteCategory(id: number) {
   if (directItems.length > 0 || itemsInSubs.length > 0) {
     throw new Error("Cannot delete a category that has items in its sub-categories.");
   }
-  await db.delete(schema.categories).where(eq(schema.categories.id, id));
+  try {
+    await db.delete(schema.categories).where(eq(schema.categories.id, id));
+  } catch {
+    throw new Error("Failed to delete category. Please try again.");
+  }
   revalidatePath("/categories");
 }
 
@@ -61,7 +65,11 @@ export async function deleteSubcategory(id: number) {
   if (!user) throw new Error("Unauthorized");
   const inUse = await db.select({ id: schema.items.id }).from(schema.items).where(eq(schema.items.subcategoryId, id)).limit(1);
   if (inUse.length > 0) throw new Error("Cannot delete sub-category with items in it.");
-  await db.delete(schema.subcategories).where(eq(schema.subcategories.id, id));
+  try {
+    await db.delete(schema.subcategories).where(eq(schema.subcategories.id, id));
+  } catch {
+    throw new Error("Failed to delete sub-category. Please try again.");
+  }
   revalidatePath("/categories");
 }
 

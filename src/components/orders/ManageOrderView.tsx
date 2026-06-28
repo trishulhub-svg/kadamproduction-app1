@@ -7,7 +7,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EVENT_CATEGORIES, ORDER_STATUS } from "@/drizzle/schema";
 import { updateOrderStatus, saveAssignments, reserveItems, unreserveItem, updateOrder } from "@/server/order-actions";
 import { formatINR, formatDateDMY } from "@/lib/utils";
-import { Search, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { getOrderDetail } from "@/lib/orders-queries";
 
 type Detail = NonNullable<Awaited<ReturnType<typeof getOrderDetail>>>;
@@ -160,7 +160,6 @@ function InventorySection({
 }) {
   const [selectedCat, setSelectedCat] = useState<number | null>(null);
   const [selectedSub, setSelectedSub] = useState<number | null>(null);
-  const [query, setQuery] = useState("");
   const [draft, setDraft] = useState<Record<number, number>>({});
   const [pending, setPending] = useState(false);
 
@@ -171,21 +170,17 @@ function InventorySection({
     return it.categoryId ?? (it.subcategoryId ? subToCat.get(it.subcategoryId) ?? null : null);
   }
 
-  const isSearching = query.trim().length >= 2;
-
   const categoriesWithCounts = categories
     .map((c) => ({ ...c, count: allItems.filter((i) => itemCategoryId(i) === c.id).length }))
     .filter((c) => c.count > 0);
 
   const subcategoriesInCat = selectedCat !== null ? subcategories.filter((s) => s.categoryId === selectedCat) : [];
 
-  const visibleItems = isSearching
-    ? allItems.filter((i) => i.name.toLowerCase().includes(query.toLowerCase()))
-    : selectedCat === null
-      ? []
-      : selectedSub === null
-        ? allItems.filter((i) => itemCategoryId(i) === selectedCat)
-        : allItems.filter((i) => i.subcategoryId === selectedSub);
+  const visibleItems = selectedCat === null
+    ? []
+    : selectedSub === null
+      ? allItems.filter((i) => itemCategoryId(i) === selectedCat)
+      : allItems.filter((i) => i.subcategoryId === selectedSub);
 
   const draftCount = Object.values(draft).filter((v) => v > 0).length;
 
@@ -229,19 +224,8 @@ function InventorySection({
         )}
       </div>
 
-      {/* Search */}
-      <div className="relative mb-3">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        <Input
-          placeholder="Search all items..."
-          className="pl-9"
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setSelectedCat(null); setSelectedSub(null); }}
-        />
-      </div>
-
       {/* Breadcrumb */}
-      {!isSearching && selectedCat !== null && (
+      {selectedCat !== null && (
         <div className="mb-3 flex items-center gap-1.5 text-sm">
           <button onClick={() => { setSelectedCat(null); setSelectedSub(null); }} className="text-kp-primary hover:underline">All</button>
           <span className="text-gray-300">/</span>
@@ -260,7 +244,7 @@ function InventorySection({
       )}
 
       {/* Category grid */}
-      {!isSearching && selectedCat === null && (
+      {selectedCat === null && (
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {categoriesWithCounts.length === 0 ? (
             <p className="col-span-full text-center text-sm text-gray-400 py-8">No inventory categories found.</p>
@@ -283,7 +267,7 @@ function InventorySection({
       )}
 
       {/* Subcategory chips */}
-      {!isSearching && selectedCat !== null && selectedSub === null && subcategoriesInCat.length > 0 && (
+      {selectedCat !== null && selectedSub === null && subcategoriesInCat.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-2">
           {subcategoriesInCat.map((s) => {
             const cnt = allItems.filter((i) => i.subcategoryId === s.id).length;
@@ -302,7 +286,7 @@ function InventorySection({
       )}
 
       {/* Items list */}
-      {(isSearching || selectedCat !== null) && visibleItems.length > 0 && (
+      {selectedCat !== null && visibleItems.length > 0 && (
         <div className="max-h-64 flex-1 space-y-1.5 overflow-y-auto pr-1">
           {visibleItems.map((it) => {
             const avail = itemAvail[it.id] ?? it.quantity;
@@ -341,7 +325,7 @@ function InventorySection({
         </div>
       )}
 
-      {(isSearching || selectedCat !== null) && visibleItems.length === 0 && (
+      {selectedCat !== null && visibleItems.length === 0 && (
         <p className="py-6 text-center text-sm text-gray-400">No items found here.</p>
       )}
 
@@ -374,26 +358,33 @@ function UnreserveBtn({ orderId, itemId }: { orderId: number; itemId: number }) 
 
 function EditOrderModal({ order, onClose }: { order: Detail["order"]; onClose: () => void }) {
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setPending(true);
-    const f = new FormData(e.currentTarget);
-    const input: Record<string, unknown> = {
-      clientName: String(f.get("clientName")),
-      contactPerson: String(f.get("contactPerson") || ""),
-      contactPhone: String(f.get("contactPhone") || ""),
-      contactEmail: String(f.get("contactEmail") || ""),
-      eventDate: String(f.get("eventDate") || ""),
-      eventTime: String(f.get("eventTime") || ""),
-      setupDate: String(f.get("setupDate") || ""),
-      setupTime: String(f.get("setupTime") || ""),
-      address: String(f.get("address") || ""),
-      billingAddress: String(f.get("billingAddress") || ""),
-      totalBudget: Number(f.get("totalBudget") || 0),
-      eventCategory: String(f.get("eventCategory") || ""),
-    };
-    await updateOrder(order.id, input);
-    onClose();
+    setError(null);
+    try {
+      const f = new FormData(e.currentTarget);
+      const input: Record<string, unknown> = {
+        clientName: String(f.get("clientName")),
+        contactPerson: String(f.get("contactPerson") || ""),
+        contactPhone: String(f.get("contactPhone") || ""),
+        contactEmail: String(f.get("contactEmail") || ""),
+        eventDate: String(f.get("eventDate") || ""),
+        eventTime: String(f.get("eventTime") || ""),
+        setupDate: String(f.get("setupDate") || ""),
+        setupTime: String(f.get("setupTime") || ""),
+        address: String(f.get("address") || ""),
+        billingAddress: String(f.get("billingAddress") || ""),
+        totalBudget: Number(f.get("totalBudget") || 0),
+        eventCategory: String(f.get("eventCategory") || ""),
+      };
+      await updateOrder(order.id, input);
+      onClose();
+    } catch (err) {
+      setError((err as Error).message);
+      setPending(false);
+    }
   }
   return (
     <Modal open onClose={onClose} title={`Edit Order #${order.id}`}>
@@ -415,6 +406,7 @@ function EditOrderModal({ order, onClose }: { order: Detail["order"]; onClose: (
         </div>
         <div><Label>Event Address</Label><textarea name="address" defaultValue={order.address ?? ""} rows={2} className="glass-input w-full rounded-lg px-3 py-2 text-sm outline-none" /></div>
         <div><Label>Billing Address</Label><textarea name="billingAddress" defaultValue={order.billingAddress ?? ""} rows={2} className="glass-input w-full rounded-lg px-3 py-2 text-sm outline-none" /></div>
+        {error && <p className="text-sm text-kp-danger">{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
           <Button type="submit" disabled={pending}>{pending ? "Saving\u2026" : "Save Changes"}</Button>

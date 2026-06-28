@@ -18,18 +18,12 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
     db.select().from(schema.subcategories),
   ]);
 
-  const total = items.reduce((a, i) => a + i.quantity, 0);
-  const available = items.reduce((a, i) => a + i.available, 0);
-  const committed = items.reduce((a, i) => a + i.committed, 0);
-  const damaged = items.filter((i) => i.status === "damaged").length;
-
   return (
     <InventoryView
       categories={categories}
       subcategories={subcategories}
       items={items}
       date={date}
-      totals={{ total, available, committed, damaged }}
     />
   );
 }

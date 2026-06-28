@@ -2,7 +2,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { Boxes, CircleCheck, CalendarClock, AlertTriangle, Search, Printer } from "lucide-react";
+import { FolderOpen, Layers, Search, Printer } from "lucide-react";
 import { useState } from "react";
 import { Button, Input, Label, Select, Modal, Card, EmptyState } from "@/components/ui";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -16,10 +16,9 @@ type Props = {
   subcategories: SubCat[];
   items: ItemRow[];
   date: string;
-  totals: { total: number; available: number; committed: number; damaged: number };
 };
 
-export function InventoryView({ categories, subcategories, items, date, totals }: Props) {
+export function InventoryView({ categories, subcategories, items, date }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [search, setSearch] = useState("");
@@ -58,10 +57,8 @@ export function InventoryView({ categories, subcategories, items, date, totals }
 
       {/* Summary cards */}
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <SummaryCard icon={Boxes} tone="primary" label="Total Stock" value={totals.total} />
-        <SummaryCard icon={CircleCheck} tone="success" label={`Available (${date})`} value={totals.available} />
-        <SummaryCard icon={CalendarClock} tone="warning" label={`Committed (${date})`} value={totals.committed} />
-        <SummaryCard icon={AlertTriangle} tone="danger" label="Damaged" value={totals.damaged} />
+        <SummaryCard icon={FolderOpen} tone="primary" label="Total Categories" value={categories.length} />
+        <SummaryCard icon={Layers} tone="success" label="Total Subcategories" value={subcategories.length} />
       </div>
 
       {/* Filters */}
@@ -148,7 +145,7 @@ export function InventoryView({ categories, subcategories, items, date, totals }
   );
 }
 
-function SummaryCard({ icon: Icon, tone, label, value }: { icon: typeof Boxes; tone: string; label: string; value: number }) {
+function SummaryCard({ icon: Icon, tone, label, value }: { icon: React.ComponentType<{ className?: string }>; tone: string; label: string; value: number }) {
   const tones: Record<string, string> = { primary: "bg-kp-primary text-white", success: "bg-kp-success text-white", warning: "bg-kp-warning text-black", danger: "bg-kp-danger text-white" };
   return (
     <div className={`flex items-center gap-3 rounded-xl p-4 ${tones[tone]}`}>

@@ -20,11 +20,11 @@ export function WhatsAppButton({
   due: number;
 }) {
   function send() {
-    const cleaned = phone.replace(/[\s\-+()]/g, "");
+    const cleaned = phone.replace(/\D/g, "").replace(/^0+/, "");
     let num = cleaned;
     if (num && !num.startsWith("91") && num.length === 10) num = "91" + num;
-    if (!num) {
-      alert("No contact phone number on this order.");
+    if (!num || num.length < 10) {
+      alert("No valid contact phone number on this order.");
       return;
     }
     const msg =

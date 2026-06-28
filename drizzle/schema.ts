@@ -168,6 +168,7 @@ export const orders = sqliteTable(
     // Improvement #6 — event category on the order
     eventCategory: text("event_category", { enum: EVENT_CATEGORIES }).default("Other"),
     setupDone: integer("setup_done").notNull().default(0),
+    gstEnabled: integer("gst_enabled", { mode: "boolean" }).notNull().default(false),
     // NOTE: no invoice_number / paid_amount / advance_payment columns (matches PHP)
     createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$onUpdateFn(() => new Date()),

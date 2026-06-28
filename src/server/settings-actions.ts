@@ -51,6 +51,14 @@ export async function saveSmtpSettings(input: { host: string; port: string; user
   revalidatePath("/settings");
 }
 
+export async function saveGstSettings(input: { number: string; percentage: number }) {
+  const admin = await requireAdmin();
+  if (!admin) throw new Error("Unauthorized");
+  await upsertSetting("gst_number", input.number.trim());
+  await upsertSetting("gst_percentage", String(input.percentage));
+  revalidatePath("/settings");
+}
+
 export async function testSmtpSettings(toEmail: string) {
   const admin = await requireAdmin();
   if (!admin) throw new Error("Unauthorized");
