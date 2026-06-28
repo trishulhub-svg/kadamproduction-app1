@@ -268,10 +268,12 @@ export async function markSetupDone(orderId: number) {
     sql: "SELECT client_name FROM orders WHERE id = ?",
     args: [orderId],
   });
-  const clientName = (orderRow.rows[0] as any)?.client_name ?? "Untitled";
+  const nameRow = orderRow.rows[0] as unknown as { client_name: string } | undefined;
+  const clientName = nameRow?.client_name ?? "Untitled";
   for (const row of adminRows.rows) {
+    const adminRow = row as unknown as { id: number };
     await createNotification({
-      userId: Number((row as any).id),
+      userId: Number(adminRow.id),
       orderId,
       type: "setup_done",
       title: "Setup Completed",

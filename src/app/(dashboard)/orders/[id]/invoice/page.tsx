@@ -26,7 +26,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const eventAddr = (order.address ?? "").trim();
   const sameAddress = !billingAddr || !eventAddr || billingAddr.toLowerCase() === eventAddr.toLowerCase();
 
-  const showGst = !!(order as any).gstEnabled;
+  const showGst = !!order.gstEnabled;
   let gstNumber = "";
   let gstPercentage = 0;
   let gstAmount = 0;

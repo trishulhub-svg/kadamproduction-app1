@@ -22,7 +22,10 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const hasFilter = Boolean(filters.status || filters.startDate || filters.endDate || filters.search || filters.year);
   let orders: Awaited<ReturnType<typeof listOrders>> = [];
   let counts: Awaited<ReturnType<typeof statusCounts>> = { ongoing: 0, upcoming: 0, completed: 0 };
-  try { const r = await Promise.all([hasFilter ? listOrders(filters) : Promise.resolve([]), statusCounts()]); orders = r[0]; counts = r[1]; } catch { /* use defaults */ }
+  try {
+    if (hasFilter) orders = await listOrders(filters);
+    counts = await statusCounts();
+  } catch { /* use defaults */ }
 
   return (
     <Suspense fallback={<div className="p-8 text-sm text-gray-500">Loading orders…</div>}>

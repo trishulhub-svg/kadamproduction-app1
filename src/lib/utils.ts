@@ -6,8 +6,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatINR(amount: number): string {
-  if (Number.isNaN(amount)) return "₹0";
+export function formatINR(amount: number | null | undefined): string {
+  if (amount == null || Number.isNaN(amount)) return "₹0";
   return "₹" + new Intl.NumberFormat("en-IN").format(Math.round(amount));
 }
 

@@ -1,7 +1,7 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition, useState, useMemo } from "react";
-import { TrendingUp, TrendingDown, Wallet, IndianRupee, Eye, EyeOff, Search, X, Phone, MessageCircle, ArrowUpDown } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, IndianRupee, Eye, EyeOff, Search, X, Phone, MessageCircle } from "lucide-react";
 import { Button, Input, Select, Modal, Card, EmptyState } from "@/components/ui";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Fab } from "@/components/Fab";

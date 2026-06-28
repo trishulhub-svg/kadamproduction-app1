@@ -23,7 +23,6 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const orderBy = sortField === "date_asc" ? asc(schema.finance.date) : sortField === "amount_desc" ? desc(schema.finance.amount) : sortField === "amount_asc" ? asc(schema.finance.amount) : desc(schema.finance.date);
 
   // Due: filter differently — find orders with outstanding balance
-  let dueTransactionIds: number[] = [];
   if (sp.type === "due") {
     const dueOrders = await db
       .select({

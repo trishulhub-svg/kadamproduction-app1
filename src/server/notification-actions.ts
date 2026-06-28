@@ -40,7 +40,8 @@ export async function getUnreadCount() {
     sql: "SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = ? AND read = 0",
     args: [user.id],
   });
-  return Number((r.rows[0] as any)!.cnt);
+  const cntRow = r.rows[0] as unknown as { cnt: number } | undefined;
+  return Number(cntRow?.cnt ?? 0);
 }
 
 export async function markNotificationRead(id: number) {

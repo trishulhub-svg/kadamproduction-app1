@@ -1,5 +1,5 @@
 // src/app/(dashboard)/categories/page.tsx
-import { eq, isNull } from "drizzle-orm";
+import { isNull } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
 import { CategoriesView } from "@/components/categories/CategoriesView";
