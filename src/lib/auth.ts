@@ -244,5 +244,6 @@ export async function changePassword(
   if (!user) return { ok: false, error: "User not found" };
   if (!(await bcrypt.compare(current, user.password))) return { ok: false, error: "Current password is incorrect" };
   await db.update(schema.users).set({ password: await hashPassword(next), mustChangePwd: false }).where(eq(schema.users.id, userId));
+  await db.update(schema.sessions).set({ revokedAt: new Date() }).where(and(eq(schema.sessions.userId, userId), isNull(schema.sessions.revokedAt)));
   return { ok: true };
 }
