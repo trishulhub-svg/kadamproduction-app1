@@ -14,7 +14,7 @@ type Detail = NonNullable<Awaited<ReturnType<typeof getOrderDetail>>>;
 type SubCat = { id: number; name: string; categoryId: number };
 
 export function ManageOrderView({ detail }: { detail: Detail }) {
-  const { order, orderItems, assignments, allItems, itemAvail, paid, subcategories } = detail;
+  const { order, orderItems, assignments, allItems, itemAvail, paid, subcategories, categories } = detail;
   const due = Math.max(0, Number(order.totalBudget) - paid);
 
   const [statusOpen, setStatusOpen] = useState(false);
@@ -30,7 +30,7 @@ export function ManageOrderView({ detail }: { detail: Detail }) {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Order #{order.id}</h1>
-          <p className="text-sm text-gray-500">{order.clientName} · {order.contactPerson ?? "—"}</p>
+          <p className="text-sm text-gray-500">{order.clientName}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -43,39 +43,42 @@ export function ManageOrderView({ detail }: { detail: Detail }) {
           <StatusBadge status={order.status} />
           <Button variant="outline" onClick={() => setEditOpen(true)}>Edit</Button>
           <Button variant="primary" onClick={() => setStatusOpen(true)}>Change Status</Button>
-          <Link href={`/orders/${order.id}/invoice`} target="_blank"><Button variant="success">Invoice</Button></Link>
+          <Link href={`/orders/${order.id}/invoice`}><Button variant="success">Invoice</Button></Link>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        {/* Order details */}
-        <Card className="p-5">
-          <h3 className="mb-3 text-sm font-semibold text-gray-700">Order Details</h3>
-          <DetailRow k="Client" v={order.clientName} />
-          <DetailRow k="Event" v={order.contactPerson} />
-          <DetailRow k="Category" v={order.eventCategory} />
-          <DetailRow k="Event Date" v={formatDateDMY(order.eventDate)} />
-          <DetailRow k="Event Time" v={order.eventTime} />
-          <DetailRow k="Setup" v={`${formatDateDMY(order.setupDate)} ${order.setupTime ?? ""}`} />
-          <DetailRow k="Phone" v={order.contactPhone} />
-          <DetailRow k="Email" v={order.contactEmail} />
-          <DetailRow k="Address" v={order.address} />
-          <DetailRow k="Budget" v={formatINR(Number(order.totalBudget))} blur={!amountsVisible} />
-          <DetailRow k="Paid" v={formatINR(paid)} blur={!amountsVisible} />
-          <DetailRow k="Due" v={formatINR(due)} accent blur={!amountsVisible} />
-        </Card>
+        {/* Left sidebar: Order details + Workforce */}
+        <div className="space-y-5">
+          <Card className="p-5">
+            <h3 className="mb-3 text-sm font-semibold text-gray-700">Order Details</h3>
+            <DetailRow k="Client" v={order.clientName} />
+            <DetailRow k="Category" v={order.eventCategory} />
+            <DetailRow k="Event Date" v={formatDateDMY(order.eventDate)} />
+            <DetailRow k="Event Time" v={order.eventTime} />
+            <DetailRow k="Setup" v={`${formatDateDMY(order.setupDate)} ${order.setupTime ?? ""}`} />
+            <DetailRow k="Phone" v={order.contactPhone} />
+            <DetailRow k="Email" v={order.contactEmail} />
+            <DetailRow k="Address" v={order.address} />
+            <DetailRow k="Amount" v={formatINR(Number(order.totalBudget))} blur={!amountsVisible} />
+            <DetailRow k="Paid" v={formatINR(paid)} blur={!amountsVisible} />
+            <DetailRow k="Due" v={formatINR(due)} accent blur={!amountsVisible} />
+          </Card>
 
-        {/* Workforce */}
-        <WorkforceSection orderId={order.id} assigned={assignments} employees={detail.employees} />
+          <WorkforceSection orderId={order.id} assigned={assignments} employees={detail.employees} />
+        </div>
 
-        {/* Inventory assignment */}
-        <InventorySection
-          orderId={order.id}
-          orderItems={orderItems}
-          allItems={allItems}
-          itemAvail={itemAvail}
-          subcategories={subcategories}
-        />
+        {/* Main: Inventory assignment (spans 2 cols on desktop) */}
+        <div className="lg:col-span-2">
+          <InventorySection
+            orderId={order.id}
+            orderItems={orderItems}
+            allItems={allItems}
+            itemAvail={itemAvail}
+            subcategories={subcategories}
+            categories={categories}
+          />
+        </div>
       </div>
 
       {editOpen && (
@@ -146,26 +149,45 @@ function InventorySection({
   allItems,
   itemAvail,
   subcategories,
+  categories,
 }: {
   orderId: number;
   orderItems: { id: number; itemId: number; name: string; barcode: string; quantity: number }[];
-  allItems: { id: number; name: string; quantity: number; status: string; subcategoryId: number | null; subcategoryName: string | null }[];
+  allItems: { id: number; name: string; categoryId: number | null; subcategoryId: number | null; quantity: number; status: string; subcategoryName: string | null }[];
   itemAvail: Record<number, number>;
   subcategories: SubCat[];
+  categories: { id: number; name: string }[];
 }) {
+  const [selectedCat, setSelectedCat] = useState<number | null>(null);
+  const [selectedSub, setSelectedSub] = useState<number | null>(null);
   const [query, setQuery] = useState("");
-  const [showAll, setShowAll] = useState(false);
   const [draft, setDraft] = useState<Record<number, number>>({});
   const [pending, setPending] = useState(false);
-  const [subFilter, setSubFilter] = useState<string>("");
 
-  const filtered = (showAll || query.length >= 2
-    ? allItems.filter((i) => {
-        if (query && !i.name.toLowerCase().includes(query.toLowerCase())) return false;
-        if (subFilter && String(i.subcategoryId) !== subFilter) return false;
-        return true;
-      })
-    : []);
+  const subToCat = new Map<number, number>();
+  subcategories.forEach((s) => subToCat.set(s.id, s.categoryId));
+
+  function itemCategoryId(it: (typeof allItems)[number]): number | null {
+    return it.categoryId ?? (it.subcategoryId ? subToCat.get(it.subcategoryId) ?? null : null);
+  }
+
+  const isSearching = query.trim().length >= 2;
+
+  const categoriesWithCounts = categories
+    .map((c) => ({ ...c, count: allItems.filter((i) => itemCategoryId(i) === c.id).length }))
+    .filter((c) => c.count > 0);
+
+  const subcategoriesInCat = selectedCat !== null ? subcategories.filter((s) => s.categoryId === selectedCat) : [];
+
+  const visibleItems = isSearching
+    ? allItems.filter((i) => i.name.toLowerCase().includes(query.toLowerCase()))
+    : selectedCat === null
+      ? []
+      : selectedSub === null
+        ? allItems.filter((i) => itemCategoryId(i) === selectedCat)
+        : allItems.filter((i) => i.subcategoryId === selectedSub);
+
+  const draftCount = Object.values(draft).filter((v) => v > 0).length;
 
   async function reserve() {
     const payload = Object.entries(draft)
@@ -178,9 +200,17 @@ function InventorySection({
     setPending(false);
   }
 
+  const catName = categories.find((c) => c.id === selectedCat)?.name;
+  const subName = subcategories.find((s) => s.id === selectedSub)?.name;
+
   return (
-    <Card className="p-5">
-      <h3 className="mb-3 text-sm font-semibold text-gray-700">Assign Inventory</h3>
+    <Card className="flex h-full flex-col p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-gray-700">Assign Inventory</h3>
+        {draftCount > 0 && (
+          <span className="rounded-full bg-kp-primary px-2.5 py-0.5 text-xs font-bold text-white">{draftCount} selected</span>
+        )}
+      </div>
 
       {/* Reserved items */}
       <div className="mb-4">
@@ -191,7 +221,7 @@ function InventorySection({
           <ul className="space-y-1.5">
             {orderItems.map((oi) => (
               <li key={oi.id} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-1.5 text-sm">
-                <span>{oi.name} <span className="text-gray-400">×{oi.quantity}</span></span>
+                <span>{oi.name} <span className="text-gray-400">x{oi.quantity}</span></span>
                 <UnreserveBtn orderId={orderId} itemId={oi.itemId} />
               </li>
             ))}
@@ -199,47 +229,98 @@ function InventorySection({
         )}
       </div>
 
-      {/* Subcategory filter */}
-      <Label>Filter by subcategory</Label>
-      <Select value={subFilter} onChange={(e) => setSubFilter(e.target.value)} className="mb-2">
-        <option value="">All subcategories</option>
-        {subcategories.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-      </Select>
-
       {/* Search */}
-      <Label>Or search by name</Label>
-      <div className="relative mb-2">
+      <div className="relative mb-3">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <Input
-          placeholder="Type at least 2 chars…"
+          placeholder="Search all items..."
           className="pl-9"
           value={query}
-          onChange={(e) => { setQuery(e.target.value); setShowAll(false); }}
+          onChange={(e) => { setQuery(e.target.value); setSelectedCat(null); setSelectedSub(null); }}
         />
       </div>
-      <button
-        type="button"
-        onClick={() => setShowAll((v) => !v)}
-        className="mb-2 text-xs text-kp-primary hover:underline"
-      >
-        {showAll ? "Hide list" : "Show all items"}
-      </button>
 
-      {filtered.length > 0 && (
-        <div className="max-h-60 space-y-1.5 overflow-y-auto pr-1">
-          {filtered.map((it) => {
+      {/* Breadcrumb */}
+      {!isSearching && selectedCat !== null && (
+        <div className="mb-3 flex items-center gap-1.5 text-sm">
+          <button onClick={() => { setSelectedCat(null); setSelectedSub(null); }} className="text-kp-primary hover:underline">All</button>
+          <span className="text-gray-300">/</span>
+          {selectedSub !== null ? (
+            <button onClick={() => setSelectedSub(null)} className="text-kp-primary hover:underline">{catName}</button>
+          ) : (
+            <span className="font-semibold text-gray-700">{catName}</span>
+          )}
+          {selectedSub !== null && (
+            <>
+              <span className="text-gray-300">/</span>
+              <span className="font-semibold text-gray-700">{subName}</span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Category grid */}
+      {!isSearching && selectedCat === null && (
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+          {categoriesWithCounts.length === 0 ? (
+            <p className="col-span-full text-center text-sm text-gray-400 py-8">No inventory categories found.</p>
+          ) : (
+            categoriesWithCounts.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setSelectedCat(c.id)}
+                className="group flex flex-col items-center justify-center rounded-xl border border-gray-200 bg-white p-4 text-center transition hover:border-kp-primary hover:shadow-md dark:border-gray-700 dark:bg-gray-800/30"
+              >
+                <div className="mb-1.5 flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-sm font-bold text-gray-600 transition group-hover:bg-kp-primary group-hover:text-white dark:bg-gray-700 dark:text-gray-300">
+                  {c.name.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{c.name}</span>
+                <span className="mt-0.5 text-[10px] text-gray-400">{c.count} item{c.count !== 1 ? "s" : ""}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Subcategory chips */}
+      {!isSearching && selectedCat !== null && selectedSub === null && subcategoriesInCat.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {subcategoriesInCat.map((s) => {
+            const cnt = allItems.filter((i) => i.subcategoryId === s.id).length;
+            return (
+              <button
+                key={s.id}
+                onClick={() => setSelectedSub(s.id)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-kp-primary hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/30 dark:text-gray-300"
+              >
+                {s.name}
+                <span className="text-gray-400">{cnt}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Items list */}
+      {(isSearching || selectedCat !== null) && visibleItems.length > 0 && (
+        <div className="max-h-64 flex-1 space-y-1.5 overflow-y-auto pr-1">
+          {visibleItems.map((it) => {
             const avail = itemAvail[it.id] ?? it.quantity;
             const draftQty = draft[it.id] ?? 0;
             const previewQty = Math.max(0, avail - draftQty);
+            const isSelected = draftQty > 0;
             return (
-              <div key={it.id} className="rounded-lg border border-gray-100 px-3 py-2">
+              <div
+                key={it.id}
+                className={`rounded-lg border px-3 py-2 transition ${isSelected ? "border-kp-primary bg-gray-50 dark:bg-gray-800/50" : "border-gray-100 dark:border-gray-700"}`}
+              >
                 <div className="flex items-center justify-between">
                   <div className="min-w-0">
                     <span className="text-sm font-medium">{it.name}</span>
-                    <span className="ml-2 text-xs text-gray-400">{it.subcategoryName ?? ""}</span>
+                    {it.subcategoryName && <span className="ml-2 text-xs text-gray-400">{it.subcategoryName}</span>}
                   </div>
                   <span className="text-xs text-gray-500">
-                    Available: <span className={previewQty < avail ? "font-bold text-kp-warning" : "text-kp-success"}>{previewQty}</span> / {it.quantity}
+                    Avail: <span className={previewQty < avail ? "font-bold text-kp-warning" : "text-kp-success"}>{previewQty}</span>/{it.quantity}
                   </span>
                 </div>
                 <div className="mt-1.5 flex items-center gap-2">
@@ -252,7 +333,7 @@ function InventorySection({
                     onChange={(e) => setDraft((d) => ({ ...d, [it.id]: Math.min(avail, Math.max(0, Number(e.target.value))) }))}
                     className="h-8 w-20 sm:w-24"
                   />
-                  {draftQty > 0 && <span className="text-xs text-gray-400">−{draftQty} until reserved</span>}
+                  {draftQty > 0 && <span className="text-xs text-gray-400">pending</span>}
                 </div>
               </div>
             );
@@ -260,10 +341,19 @@ function InventorySection({
         </div>
       )}
 
-      <Button className="mt-3 w-full" variant="success" onClick={reserve} disabled={pending || Object.values(draft).every((v) => !v)}>
-        {pending ? "Reserving…" : "Reserve Items"}
+      {(isSearching || selectedCat !== null) && visibleItems.length === 0 && (
+        <p className="py-6 text-center text-sm text-gray-400">No items found here.</p>
+      )}
+
+      {/* Reserve button */}
+      <Button
+        className="mt-3 w-full shrink-0"
+        variant="success"
+        onClick={reserve}
+        disabled={pending || draftCount === 0}
+      >
+        {pending ? "Reserving..." : `Reserve ${draftCount > 0 ? `(${draftCount})` : "Items"}`}
       </Button>
-      <p className="mt-1 text-center text-xs text-gray-400">Stock is reduced in the list only — real stock updates on reserve.</p>
     </Card>
   );
 }
@@ -310,7 +400,6 @@ function EditOrderModal({ order, onClose }: { order: Detail["order"]; onClose: (
       <form onSubmit={submit} className="max-h-[70vh] space-y-4 overflow-y-auto">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div><Label>Client Name</Label><Input name="clientName" defaultValue={order.clientName} required /></div>
-          <div><Label>Contact Person</Label><Input name="contactPerson" defaultValue={order.contactPerson ?? ""} /></div>
           <div><Label>Phone</Label><Input name="contactPhone" defaultValue={order.contactPhone ?? ""} /></div>
           <div><Label>Email</Label><Input name="contactEmail" defaultValue={order.contactEmail ?? ""} type="email" /></div>
           <div><Label>Event Date</Label><Input name="eventDate" defaultValue={order.eventDate ?? ""} type="date" /></div>
@@ -322,7 +411,7 @@ function EditOrderModal({ order, onClose }: { order: Detail["order"]; onClose: (
               {EVENT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </Select>
           </div>
-          <div><Label>Total Budget (\u20B9)</Label><Input name="totalBudget" type="number" min={0} defaultValue={order.totalBudget} /></div>
+          <div><Label>Total Amount (\u20B9)</Label><Input name="totalBudget" type="number" min={0} defaultValue={order.totalBudget} /></div>
         </div>
         <div><Label>Event Address</Label><textarea name="address" defaultValue={order.address ?? ""} rows={2} className="glass-input w-full rounded-lg px-3 py-2 text-sm outline-none" /></div>
         <div><Label>Billing Address</Label><textarea name="billingAddress" defaultValue={order.billingAddress ?? ""} rows={2} className="glass-input w-full rounded-lg px-3 py-2 text-sm outline-none" /></div>

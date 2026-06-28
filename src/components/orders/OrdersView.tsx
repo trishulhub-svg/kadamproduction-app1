@@ -8,7 +8,7 @@ import { Button, Input, Select, Modal, Label, Card, EmptyState } from "@/compone
 import { StatusBadge } from "@/components/StatusBadge";
 import { Fab } from "@/components/Fab";
 import { EVENT_CATEGORIES } from "@/drizzle/schema";
-import { createOrder, deleteOrder } from "@/server/order-actions";
+import { createOrder, deleteOrder, checkEmailDuplicate } from "@/server/order-actions";
 import type { OrderListRow } from "@/lib/orders-queries";
 import { formatINR, formatDateDMY } from "@/lib/utils";
 
@@ -96,7 +96,7 @@ export function OrdersView({ orders, counts, filters, hasFilter, openNew }: Prop
             <Label>Search</Label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input placeholder="client / event / address" className="pl-9" defaultValue={filters.search || ""} onBlur={(e) => setFilter("search", e.target.value)} />
+              <Input placeholder="client / address" className="pl-9" defaultValue={filters.search || ""} onBlur={(e) => setFilter("search", e.target.value)} />
             </div>
           </div>
         </div>
@@ -121,10 +121,9 @@ export function OrdersView({ orders, counts, filters, hasFilter, openNew }: Prop
                 <tr>
                   <th className="px-4 py-3">#</th>
                   <th className="px-4 py-3">Client</th>
-                  <th className="px-4 py-3">Event</th>
                   <th className="px-4 py-3">Category</th>
                   <th className="px-4 py-3">Event Date</th>
-                  <th className="px-4 py-3">Budget</th>
+                  <th className="px-4 py-3">Amount</th>
                   <th className="px-4 py-3">Due</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Actions</th>
@@ -135,7 +134,6 @@ export function OrdersView({ orders, counts, filters, hasFilter, openNew }: Prop
                   <tr key={o.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-mono text-xs">#{o.id}</td>
                     <td className="px-4 py-3 font-medium text-gray-900">{o.clientName}</td>
-                    <td className="px-4 py-3 text-gray-600">{o.contactPerson ?? "—"}</td>
                     <td className="px-4 py-3 text-gray-600">{o.eventCategory ?? "Other"}</td>
                     <td className="px-4 py-3 text-gray-600">{formatDateDMY(o.eventDate)}</td>
                     <td className="px-4 py-3 text-gray-600">{formatINR(o.totalBudget)}</td>
@@ -144,7 +142,7 @@ export function OrdersView({ orders, counts, filters, hasFilter, openNew }: Prop
                     <td className="px-4 py-3">
                       {/* Improvement #7: actions (incl. Delete) always visible, incl. mobile */}
                       <div className="flex flex-wrap justify-end gap-1.5">
-                        <Link href={`/orders/${o.id}/invoice`} target="_blank"><Button size="sm" variant="success">Invoice</Button></Link>
+                        <Link href={`/orders/${o.id}/invoice`}><Button size="sm" variant="success">Invoice</Button></Link>
                         <Link href={`/orders/${o.id}`}><Button size="sm" variant="primary">Manage</Button></Link>
                         <DeleteOrderBtn id={o.id} />
                       </div>
@@ -220,9 +218,33 @@ function CreateModal({ onClose }: { onClose: () => void }) {
       <form id="create-order-form" onSubmit={submit} className="space-y-4" onChange={() => saveDraft("")}>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div><Label>Client Name *</Label><Input name="clientName" required /></div>
-          <div><Label>Event Name</Label><Input name="contactPerson" /></div>
           <div><Label>Contact Phone</Label><Input name="contactPhone" /></div>
-          <div><Label>Contact Email</Label><Input name="contactEmail" type="email" /></div>
+          <div className="sm:col-span-2">
+            <Label>Contact Email</Label>
+            <Input name="contactEmail" type="email" onBlur={(e) => {
+              const v = e.target.value;
+              if (v && v.toLowerCase() !== v) {
+                e.target.value = v.toLowerCase();
+                const warn = document.getElementById("email-case-warn");
+                if (warn) warn.textContent = "Converted to lowercase. Please use all lowercase letters for email.";
+              }
+            }} onChange={async (e) => {
+              const v = e.target.value.trim().toLowerCase();
+              const warn = document.getElementById("email-dup-warn");
+              if (!warn) return;
+              if (v.length < 5 || !v.includes("@")) { warn.textContent = ""; return; }
+              try {
+                const res = await checkEmailDuplicate(v);
+                if (res.length > 0) {
+                  warn.textContent = `This email is used for order #${res[0].id} (${res[0].clientName}).`;
+                } else {
+                  warn.textContent = "";
+                }
+              } catch { warn.textContent = ""; }
+            }} />
+            <p id="email-case-warn" className="mt-1 text-xs text-kp-warning"></p>
+            <p id="email-dup-warn" className="mt-1 text-xs text-kp-warning"></p>
+          </div>
           <div><Label>Transport Contact Name</Label><Input name="transportContactName" /></div>
           <div><Label>Transport Contact Phone</Label><Input name="transportContactPhone" /></div>
           <div><Label>Event Date</Label><Input name="eventDate" type="date" /></div>
@@ -236,7 +258,7 @@ function CreateModal({ onClose }: { onClose: () => void }) {
               {EVENT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </Select>
           </div>
-          <div><Label>Total Budget (₹)</Label><Input name="totalBudget" type="number" min={0} defaultValue={0} /></div>
+          <div><Label>Total Amount (₹)</Label><Input name="totalBudget" type="number" min={0} defaultValue={0} /></div>
           <div><Label>Advance Payment (₹)</Label><Input name="advancePayment" type="number" min={0} defaultValue={0} /></div>
         </div>
         <div><Label>Billing Address</Label><Input name="billingAddress" /></div>

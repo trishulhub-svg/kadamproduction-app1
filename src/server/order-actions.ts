@@ -2,7 +2,7 @@
 "use server";
 import { createClient } from "@libsql/client";
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { createNotification } from "./notification-actions";
@@ -81,6 +81,22 @@ export async function updateOrder(id: number, input: Record<string, unknown>) {
   await db.update(schema.orders).set(patch).where(eq(schema.orders.id, id));
   revalidatePath("/orders");
   revalidatePath(`/orders/${id}`);
+}
+
+/** Check if an email is already used by another order. */
+export async function checkEmailDuplicate(email: string, excludeOrderId?: number) {
+  const user = await requireAdmin();
+  if (!user) throw new Error("Unauthorized");
+  const emailLower = email.trim().toLowerCase();
+  if (!emailLower) return [];
+  const conds = [eq(schema.orders.contactEmail, emailLower), isNull(schema.orders.deletedAt)];
+  if (excludeOrderId) conds.push(sql`${schema.orders.id} <> ${excludeOrderId}`);
+  const rows = await db
+    .select({ id: schema.orders.id, clientName: schema.orders.clientName })
+    .from(schema.orders)
+    .where(and(...conds))
+    .limit(5);
+  return rows;
 }
 
 /**

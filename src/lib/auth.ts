@@ -1,11 +1,12 @@
 // src/lib/auth.ts
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, gte, asc } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db, schema } from "./db";
 
 const COOKIE = "kp_session";
+const MAX_ADMIN_DEVICES = 2;
 
 // H1: No weak fallback in production
 function getSecret(): Uint8Array {
@@ -32,6 +33,24 @@ async function sign(user: SessionUser): Promise<string> {
   const sessionId = crypto.randomUUID();
   // M1: persist session in DB for revocation
   try {
+    // Phase 6: Admin 2-device limit — revoke oldest sessions beyond the limit
+    if (user.role === "admin") {
+      const activeSessions = await db
+        .select({ id: schema.sessions.id })
+        .from(schema.sessions)
+        .where(and(
+          eq(schema.sessions.userId, user.id),
+          isNull(schema.sessions.revokedAt),
+          gte(schema.sessions.expiresAt, new Date()),
+        ))
+        .orderBy(asc(schema.sessions.createdAt));
+
+      const toRevokeCount = Math.max(0, activeSessions.length - MAX_ADMIN_DEVICES + 1);
+      for (let i = 0; i < toRevokeCount; i++) {
+        await db.update(schema.sessions).set({ revokedAt: new Date() }).where(eq(schema.sessions.id, activeSessions[i].id));
+      }
+    }
+
     await db.insert(schema.sessions).values({
       id: sessionId,
       userId: user.id,
