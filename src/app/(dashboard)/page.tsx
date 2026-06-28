@@ -29,7 +29,8 @@ export default async function DashboardPage() {
     );
   }
 
-  const s = await getDashboardStats();
+  let s;
+  try { s = await getDashboardStats(); } catch { s = { busy: 0, ongoingOrders: 0, upcomingOrders: 0, employees: 0, totalItems: 0 }; }
 
   return (
     <div>

@@ -9,7 +9,8 @@ export default async function ManageOrderPage({ params }: { params: Promise<{ id
   if (!user || user.role !== "admin") return null;
 
   const { id } = await params;
-  const detail = await getOrderDetail(Number(id));
+  let detail;
+  try { detail = await getOrderDetail(Number(id)); } catch { /* fall through */ }
   if (!detail) notFound();
 
   return <ManageOrderView detail={detail} />;

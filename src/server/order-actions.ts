@@ -33,42 +33,48 @@ export async function createOrder(input: {
   const budget = Number(input.totalBudget || 0);
   const advance = Number(input.advancePayment || 0);
 
-  const [order] = await db
-    .insert(schema.orders)
-    .values({
-      clientName: input.clientName.trim(),
-      contactPerson: input.contactPerson.trim() || null,
-      contactPhone: input.contactPhone || null,
-      contactEmail: input.contactEmail || null,
-      transportContactName: input.transportContactName || null,
-      transportContactPhone: input.transportContactPhone || null,
-      eventDate: input.eventDate || null,
-      eventTime: input.eventTime || null,
-      setupDate: input.setupDate || null,
-      setupTime: input.setupTime || null,
-      address: input.address || null,
-      billingAddress: input.billingAddress || null,
-      totalBudget: budget,
-      status: "upcoming",
-      eventCategory: (EVENT_CATEGORIES as readonly string[]).includes(input.eventCategory || "") ? (input.eventCategory as typeof EVENT_CATEGORIES[number]) : "Other",
-      gstEnabled: input.gstEnabled ?? false,
-    })
-    .returning({ id: schema.orders.id });
+  let orderId: number | undefined;
+  try {
+    const [order] = await db
+      .insert(schema.orders)
+      .values({
+        clientName: input.clientName.trim(),
+        contactPerson: input.contactPerson.trim() || null,
+        contactPhone: input.contactPhone || null,
+        contactEmail: input.contactEmail || null,
+        transportContactName: input.transportContactName || null,
+        transportContactPhone: input.transportContactPhone || null,
+        eventDate: input.eventDate || null,
+        eventTime: input.eventTime || null,
+        setupDate: input.setupDate || null,
+        setupTime: input.setupTime || null,
+        address: input.address || null,
+        billingAddress: input.billingAddress || null,
+        totalBudget: budget,
+        status: "upcoming",
+        eventCategory: (EVENT_CATEGORIES as readonly string[]).includes(input.eventCategory || "") ? (input.eventCategory as typeof EVENT_CATEGORIES[number]) : "Other",
+        gstEnabled: input.gstEnabled ?? false,
+      })
+      .returning({ id: schema.orders.id });
 
-  // Advance stored as a finance income row (preserves PHP behavior)
-  if (advance > 0 && order) {
-    await db.insert(schema.finance).values({
-      orderId: order.id,
-      type: "income",
-      category: "Advance Payment",
-      amount: advance,
-      date: input.eventDate || new Date().toISOString().slice(0, 10),
-      description: "Advance at order creation",
-    });
+    if (advance > 0 && order) {
+      await db.insert(schema.finance).values({
+        orderId: order.id,
+        type: "income",
+        category: "Advance Payment",
+        amount: advance,
+        date: input.eventDate || new Date().toISOString().slice(0, 10),
+        description: "Advance at order creation",
+      });
+    }
+    orderId = order?.id;
+  } catch (err) {
+    console.error("createOrder error:", err);
+    throw new Error("Failed to create order. Please try again.");
   }
 
   revalidatePath("/orders");
-  return order?.id;
+  return orderId;
 }
 
 export async function updateOrder(id: number, input: Record<string, unknown>) {
@@ -81,7 +87,7 @@ export async function updateOrder(id: number, input: Record<string, unknown>) {
     }
     if (input.totalBudget !== undefined) patch.totalBudget = Number(input.totalBudget || 0);
     if (input.eventCategory !== undefined && (EVENT_CATEGORIES as readonly string[]).includes(String(input.eventCategory))) patch.eventCategory = input.eventCategory;
-    await db.update(schema.orders).set(patch).where(eq(schema.orders.id, id));
+    await db.update(schema.orders).set(patch).where(and(eq(schema.orders.id, id), isNull(schema.orders.deletedAt)));
     revalidatePath("/orders");
     revalidatePath(`/orders/${id}`);
   } catch (err) {
@@ -177,8 +183,9 @@ export async function deleteOrder(id: number) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
   const [o] = await db.select({ status: schema.orders.status }).from(schema.orders).where(eq(schema.orders.id, id)).limit(1);
-  if (o?.status === "ongoing") throw new Error("Cannot delete an ongoing order. Complete or cancel it first.");
-  await db.update(schema.orders).set({ deletedAt: new Date() }).where(eq(schema.orders.id, id)); // soft delete
+  if (!o) throw new Error("Order not found.");
+  if (o.status === "ongoing") throw new Error("Cannot delete an ongoing order. Complete or cancel it first.");
+  await db.update(schema.orders).set({ deletedAt: new Date() }).where(eq(schema.orders.id, id));
   revalidatePath("/orders");
 }
 

@@ -15,7 +15,7 @@ export async function createTeam(input: { name: string; description?: string }) 
 export async function deleteTeam(id: number) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
-  await db.delete(schema.teams).where(eq(schema.teams.id, id));
+  await db.update(schema.teams).set({ deletedAt: new Date() }).where(eq(schema.teams.id, id));
   revalidatePath("/teams");
 }
 

@@ -14,7 +14,8 @@ type Detail = NonNullable<Awaited<ReturnType<typeof getOrderDetail>>>;
 type SubCat = { id: number; name: string; categoryId: number };
 
 export function ManageOrderView({ detail }: { detail: Detail }) {
-  const { order, orderItems, assignments, allItems, itemAvail, paid, subcategories, categories } = detail;
+  const { order, orderItems = [], assignments = [], allItems = [], itemAvail = {}, paid = 0, subcategories = [], categories = [] } = detail;
+  if (!order) return <Card className="p-8 text-center"><p className="text-sm text-red-500">Order data unavailable.</p></Card>;
   const due = Math.max(0, Number(order.totalBudget) - paid);
 
   const [statusOpen, setStatusOpen] = useState(false);

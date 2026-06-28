@@ -109,10 +109,12 @@ export async function getOrderDetail(orderId: number) {
       })
       .from(schema.orderItems)
       .innerJoin(schema.orders, eq(schema.orderItems.orderId, schema.orders.id))
+      .innerJoin(schema.items, eq(schema.orderItems.itemId, schema.items.id))
       .where(and(
         inArray(schema.orders.status, ["upcoming", "ongoing"]),
         sql`${schema.orderItems.orderId} <> ${orderId}`,
-        inArray(schema.items.id, sql`(select ${schema.items.id} from ${schema.items} where ${schema.items.deletedAt} is null and ${schema.items.status} in ('available','busy'))`),
+        isNull(schema.items.deletedAt),
+        inArray(schema.items.status, ["available", "busy"]),
       ))
       .groupBy(schema.orderItems.itemId),
     db.select({ id: schema.categories.id, name: schema.categories.name }).from(schema.categories),
