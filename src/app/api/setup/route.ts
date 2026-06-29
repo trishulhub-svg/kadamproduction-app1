@@ -47,6 +47,8 @@ const DDL = [
     name TEXT NOT NULL,
     barcode TEXT NOT NULL UNIQUE,
     category_id INTEGER,
+    subcategory_id INTEGER,
+    description TEXT,
     quantity INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'available',
     current_order_id INTEGER,

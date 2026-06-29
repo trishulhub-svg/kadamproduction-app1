@@ -61,13 +61,18 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
     db.select({ id: schema.orders.id, clientName: schema.orders.clientName }).from(schema.orders).where(isNull(schema.orders.deletedAt)),
 
-    db
-      .select({
-        totalIncome: sql<number>`coalesce(sum(case when ${schema.finance.type} = 'income' then ${schema.finance.amount} end), 0)`,
-        totalExpense: sql<number>`coalesce(sum(case when ${schema.finance.type} = 'expense' then ${schema.finance.amount} end), 0)`,
-      })
-      .from(schema.finance)
-      .where(and(isNull(schema.finance.deletedAt), sp.startDate ? gte(schema.finance.date, sp.startDate) : undefined, sp.endDate ? lte(schema.finance.date, sp.endDate) : undefined)),
+    (() => {
+      const summaryConds = [isNull(schema.finance.deletedAt)];
+      if (sp.startDate) summaryConds.push(gte(schema.finance.date, sp.startDate));
+      if (sp.endDate) summaryConds.push(lte(schema.finance.date, sp.endDate));
+      return db
+        .select({
+          totalIncome: sql<number>`coalesce(sum(case when ${schema.finance.type} = 'income' then ${schema.finance.amount} end), 0)`,
+          totalExpense: sql<number>`coalesce(sum(case when ${schema.finance.type} = 'expense' then ${schema.finance.amount} end), 0)`,
+        })
+        .from(schema.finance)
+        .where(and(...summaryConds));
+    })(),
 
     db
       .select({

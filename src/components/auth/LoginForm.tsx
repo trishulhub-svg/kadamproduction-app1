@@ -1,11 +1,22 @@
 "use client";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { loginAction } from "@/server/auth-actions";
 import { Film } from "lucide-react";
 
 export function LoginForm({ logoUrl }: { logoUrl: string | null }) {
   const [state, formAction, pending] = useActionState(loginAction, null);
+  const router = useRouter();
   const year = new Date().getFullYear();
+  useEffect(() => {
+    if (state?.ok) {
+      if (state.mustChangePwd) {
+        router.push("/change-password?force=1");
+      } else {
+        router.push("/");
+      }
+    }
+  }, [state, router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-950 via-gray-900 to-black p-4">

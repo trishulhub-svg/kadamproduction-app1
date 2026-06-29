@@ -379,6 +379,7 @@ function EditOrderModal({ order, onClose }: { order: Detail["order"]; onClose: (
         billingAddress: String(f.get("billingAddress") || ""),
         totalBudget: Number(f.get("totalBudget") || 0),
         eventCategory: String(f.get("eventCategory") || ""),
+        gstEnabled: f.get("gstEnabled") === "on",
       };
       await updateOrder(order.id, input);
       onClose();
@@ -405,6 +406,10 @@ function EditOrderModal({ order, onClose }: { order: Detail["order"]; onClose: (
           </div>
           <div><Label>Total Amount (\u20B9)</Label><Input name="totalBudget" type="number" min={0} defaultValue={order.totalBudget} /></div>
         </div>
+        <label className="flex items-center gap-2 text-sm text-gray-600">
+          <input type="checkbox" name="gstEnabled" defaultChecked={!!order.gstEnabled} className="h-4 w-4 accent-kp-primary" />
+          GST Invoice
+        </label>
         <div><Label>Event Address</Label><textarea name="address" defaultValue={order.address ?? ""} rows={2} className="glass-input w-full rounded-lg px-3 py-2 text-sm outline-none" /></div>
         <div><Label>Billing Address</Label><textarea name="billingAddress" defaultValue={order.billingAddress ?? ""} rows={2} className="glass-input w-full rounded-lg px-3 py-2 text-sm outline-none" /></div>
         {error && <p className="text-sm text-kp-danger">{error}</p>}

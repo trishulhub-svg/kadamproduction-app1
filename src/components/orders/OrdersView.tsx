@@ -169,6 +169,7 @@ export function OrdersView({ orders, counts, filters, hasFilter, openNew }: Prop
 function CreateModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [autoSend, setAutoSend] = useState(false);
   const [gstEnabled, setGstEnabled] = useState(false);
   const DRAFT_KEY = "kp_new_order_draft";
@@ -198,37 +199,44 @@ function CreateModal({ onClose }: { onClose: () => void }) {
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setPending(true);
+    setError(null);
     localStorage.removeItem(DRAFT_KEY);
-    const f = new FormData(e.currentTarget);
-    const id = await createOrder({
-      clientName: String(f.get("clientName")),
-      contactPerson: String(f.get("contactPerson") || ""),
-      contactPhone: String(f.get("contactPhone") || ""),
-      contactEmail: String(f.get("contactEmail") || ""),
-      transportContactName: String(f.get("transportContactName") || ""),
-      transportContactPhone: String(f.get("transportContactPhone") || ""),
-      eventDate: String(f.get("eventDate") || ""),
-      eventTime: String(f.get("eventTime") || ""),
-      setupDate: String(f.get("setupDate") || ""),
-      setupTime: String(f.get("setupTime") || ""),
-      address: String(f.get("address") || ""),
-      billingAddress: String(f.get("billingAddress") || ""),
-      totalBudget: Number(f.get("totalBudget") || 0),
-      advancePayment: Number(f.get("advancePayment") || 0),
-      eventCategory: String(f.get("eventCategory") || "Other"),
-      gstEnabled,
-    });
-    if (id) {
-      if (autoSend && String(f.get("contactEmail") || "").trim()) {
-        try { await sendInvoiceEmail(id); } catch { /* email send failure is non-blocking */ }
+    try {
+      const f = new FormData(e.currentTarget);
+      const id = await createOrder({
+        clientName: String(f.get("clientName")),
+        contactPerson: String(f.get("contactPerson") || ""),
+        contactPhone: String(f.get("contactPhone") || ""),
+        contactEmail: String(f.get("contactEmail") || ""),
+        transportContactName: String(f.get("transportContactName") || ""),
+        transportContactPhone: String(f.get("transportContactPhone") || ""),
+        eventDate: String(f.get("eventDate") || ""),
+        eventTime: String(f.get("eventTime") || ""),
+        setupDate: String(f.get("setupDate") || ""),
+        setupTime: String(f.get("setupTime") || ""),
+        address: String(f.get("address") || ""),
+        billingAddress: String(f.get("billingAddress") || ""),
+        totalBudget: Number(f.get("totalBudget") || 0),
+        advancePayment: Number(f.get("advancePayment") || 0),
+        eventCategory: String(f.get("eventCategory") || "Other"),
+        gstEnabled,
+      });
+      if (id) {
+        if (autoSend && String(f.get("contactEmail") || "").trim()) {
+          try { await sendInvoiceEmail(id); } catch { /* email send failure is non-blocking */ }
+        }
+        router.push(`/orders/${id}`);
       }
-      router.push(`/orders/${id}`);
+      onClose();
+    } catch (err) {
+      setError((err as Error).message);
+      setPending(false);
     }
-    onClose();
   }
   return (
     <Modal open onClose={onClose} title="Create New Order" className="max-w-2xl">
       <form id="create-order-form" onSubmit={submit} className="space-y-4" onChange={() => saveDraft("")}>
+        {error && <div className="rounded-lg bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700">{error}</div>}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div><Label>Client Name *</Label><Input name="clientName" required /></div>
           <div><Label>Contact Phone</Label><Input name="contactPhone" /></div>
