@@ -172,7 +172,6 @@ function InventorySection({
   const [selectedSub, setSelectedSub] = useState<number | null>(null);
   const [draft, setDraft] = useState<Record<number, number>>({});
   const [pending, setPending] = useState(false);
-  const [showSummary, setShowSummary] = useState(false);
 
   const subToCat = new Map<number, number>();
   subcategories.forEach((s) => subToCat.set(s.id, s.categoryId));
@@ -181,13 +180,14 @@ function InventorySection({
     return it.categoryId ?? (it.subcategoryId ? subToCat.get(it.subcategoryId) ?? null : null);
   }
 
+  const catsWithItems = categories.filter((c) => allItems.some((i) => itemCategoryId(i) === c.id));
   const subcategoriesInCat = selectedCat !== null ? subcategories.filter((s) => s.categoryId === selectedCat) : [];
 
-  const visibleItems = selectedCat === null
-    ? []
-    : selectedSub === null
+  const visibleItems = selectedSub !== null
+    ? allItems.filter((i) => i.subcategoryId === selectedSub)
+    : selectedCat !== null
       ? allItems.filter((i) => itemCategoryId(i) === selectedCat)
-      : allItems.filter((i) => i.subcategoryId === selectedSub);
+      : [];
 
   const draftEntries = Object.entries(draft).filter(([, qty]) => qty > 0);
   const draftCount = draftEntries.length;
@@ -212,11 +212,6 @@ function InventorySection({
     setDraft((d) => { const n = { ...d }; delete n[itemId]; return n; });
   }
 
-  function clearAllDraft() {
-    if (draftCount === 0) return;
-    setDraft({});
-  }
-
   async function reserve() {
     const payload = draftEntries.map(([itemId, qty]) => ({ itemId: Number(itemId), qty }));
     if (payload.length === 0) return;
@@ -231,9 +226,9 @@ function InventorySection({
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-700">Assign Inventory</h3>
         {draftCount > 0 && (
-          <button onClick={() => setShowSummary(!showSummary)} className="rounded-full bg-kp-primary px-2.5 py-0.5 text-xs font-bold text-white hover:bg-kp-primary/90">
-            {draftCount} item{draftCount !== 1 ? "s" : ""} · {draftTotalQty} qty
-          </button>
+          <span className="rounded-full bg-kp-primary px-2.5 py-0.5 text-xs font-bold text-white">
+            {draftCount} · {draftTotalQty} qty
+          </span>
         )}
       </div>
 
@@ -254,115 +249,142 @@ function InventorySection({
         )}
       </div>
 
-      {/* Draft summary (collapsible) */}
-      {draftCount > 0 && showSummary && (
-        <div className="mb-3 rounded-lg border border-kp-primary/30 bg-kp-primary/5 p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wide text-kp-primary">Selected Items</p>
-            <button onClick={clearAllDraft} className="text-xs text-red-500 hover:underline">Clear all</button>
-          </div>
-          <div className="max-h-40 space-y-1 overflow-y-auto">
-            {draftEntries.map(([id, qty]) => {
-              const item = itemMap.get(Number(id));
-              if (!item) return null;
-              return (
-                <div key={id} className="flex items-center justify-between rounded bg-white px-2.5 py-1.5 text-sm dark:bg-gray-800/50">
-                  <span>{item.name} <span className="text-gray-400">x{qty}</span></span>
-                  <button onClick={() => clearDraftItem(Number(id))} className="text-xs text-red-400 hover:text-red-600">Remove</button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Category + Subcategory selectors */}
-      <div className="mb-3 grid grid-cols-2 gap-2">
-        <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Category</label>
-          <select
-            value={selectedCat ?? ""}
-            onChange={(e) => { setSelectedCat(e.target.value ? Number(e.target.value) : null); setSelectedSub(null); }}
-            className="h-9 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm outline-none focus:border-kp-primary dark:border-gray-700 dark:bg-gray-800/30"
-          >
-            <option value="">— Select Category —</option>
-            {categories
-              .filter((c) => allItems.some((i) => itemCategoryId(i) === c.id))
-              .map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Subcategory</label>
-          <select
-            value={selectedSub ?? ""}
-            onChange={(e) => setSelectedSub(e.target.value ? Number(e.target.value) : null)}
-            disabled={selectedCat === null}
-            className="h-9 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm outline-none focus:border-kp-primary disabled:opacity-40 dark:border-gray-700 dark:bg-gray-800/30"
-          >
-            <option value="">{selectedCat === null ? "Select category first" : "— All Items —"}</option>
-            {subcategoriesInCat.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Items table */}
-      {selectedCat !== null && (
-        <>
-          {visibleItems.length === 0 ? (
-            <p className="py-8 text-center text-sm text-gray-400">No items found in this selection.</p>
+      {/* Step 1: Pick Category */}
+      {selectedCat === null ? (
+        <div className="flex-1">
+          <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-gray-400">1. Choose a Category</p>
+          {catsWithItems.length === 0 ? (
+            <p className="text-sm text-gray-400">No inventory categories found.</p>
           ) : (
-            <div className="max-h-64 flex-1 space-y-1 overflow-y-auto pr-1">
-              {visibleItems.map((it) => {
-                const avail = itemAvail[it.id] ?? it.quantity;
-                const draftQty = draft[it.id] ?? 0;
-                const isSelected = draftQty > 0;
-                const reservedQty = orderItems.find((oi) => oi.itemId === it.id)?.quantity ?? 0;
-                const effectiveAvail = Math.max(0, avail - reservedQty);
+            <div className="grid grid-cols-2 gap-2.5">
+              {catsWithItems.map((c) => {
+                const cnt = allItems.filter((i) => itemCategoryId(i) === c.id).length;
                 return (
-                  <div
-                    key={it.id}
-                    className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition ${isSelected ? "border-kp-primary bg-gray-50 dark:bg-gray-800/50" : "border-gray-100 dark:border-gray-700"}`}
+                  <button
+                    key={c.id}
+                    onClick={() => { setSelectedCat(c.id); setSelectedSub(null); }}
+                    className="flex flex-col items-center justify-center rounded-xl border border-gray-200 bg-white p-4 text-center transition hover:border-kp-primary hover:shadow-md dark:border-gray-700 dark:bg-gray-800/30"
                   >
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium">{it.name}</span>
-                      {it.subcategoryName && <span className="ml-1.5 text-xs text-gray-400">({it.subcategoryName})</span>}
-                      <span className="ml-2 text-xs text-gray-500">Avail: {effectiveAvail}</span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={effectiveAvail}
-                        placeholder="qty"
-                        value={draftQty || ""}
-                        onChange={(e) => setQty(it.id, Number(e.target.value))}
-                        className="h-8 w-16 text-center"
-                      />
-                      {isSelected && (
-                        <button onClick={() => clearDraftItem(it.id)} className="text-xs text-red-400 hover:text-red-600">×</button>
-                      )}
-                    </div>
-                  </div>
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{c.name}</span>
+                    <span className="mt-0.5 text-[11px] text-gray-400">{cnt} item{cnt !== 1 ? "s" : ""}</span>
+                  </button>
                 );
               })}
             </div>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Step 2: Back + Pick Subcategory */}
+          <div className="mb-2.5 flex items-center gap-2">
+            <button
+              onClick={() => { setSelectedCat(null); setSelectedSub(null); }}
+              className="text-xs font-medium text-kp-primary hover:underline"
+            >← Back to categories</button>
+            <span className="text-xs text-gray-400">{categories.find((c) => c.id === selectedCat)?.name}</span>
+          </div>
+
+          {selectedSub === null && subcategoriesInCat.length > 0 && (
+            <div className="mb-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">2. Pick Subcategory (or browse all)</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSelectedSub(-1)}
+                  className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition hover:border-kp-primary ${selectedSub === -1 ? "border-kp-primary bg-kp-primary text-white" : "border-gray-200 bg-white text-gray-600 dark:border-gray-600 dark:bg-gray-800/30 dark:text-gray-300"}`}
+                >All Items</button>
+                {subcategoriesInCat.map((s) => {
+                  const cnt = allItems.filter((i) => i.subcategoryId === s.id).length;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => setSelectedSub(s.id)}
+                      className="rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-xs font-medium text-gray-600 transition hover:border-kp-primary dark:border-gray-600 dark:bg-gray-800/30 dark:text-gray-300"
+                    >
+                      {s.name} <span className="text-gray-400">({cnt})</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {selectedSub === null && subcategoriesInCat.length === 0 && (
+            <div className="mb-3">
+              <button
+                onClick={() => setSelectedSub(-1)}
+                className="rounded-full border border-kp-primary bg-kp-primary px-3.5 py-1.5 text-xs font-medium text-white"
+              >Browse All Items</button>
+            </div>
+          )}
+
+          {/* Step 3: Items */}
+          {selectedSub !== null && (
+            <>
+              <div className="mb-2 flex items-center gap-2">
+                <button
+                  onClick={() => setSelectedSub(null)}
+                  className="text-xs font-medium text-kp-primary hover:underline"
+                >← Back to subcategories</button>
+                <span className="text-xs text-gray-400">
+                  {selectedSub === -1 ? "All Items" : subcategories.find((s) => s.id === selectedSub)?.name}
+                </span>
+              </div>
+
+              {visibleItems.length === 0 ? (
+                <p className="py-8 text-center text-sm text-gray-400">No items found.</p>
+              ) : (
+                <div className="max-h-64 flex-1 space-y-1 overflow-y-auto pr-1">
+                  {visibleItems.map((it) => {
+                    const avail = itemAvail[it.id] ?? it.quantity;
+                    const draftQty = draft[it.id] ?? 0;
+                    const isSelected = draftQty > 0;
+                    const reservedQty = orderItems.find((oi) => oi.itemId === it.id)?.quantity ?? 0;
+                    const effectiveAvail = Math.max(0, avail - reservedQty);
+                    return (
+                      <div
+                        key={it.id}
+                        className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition ${isSelected ? "border-kp-primary bg-gray-50 dark:bg-gray-800/50" : "border-gray-100 dark:border-gray-700"}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium">{it.name}</span>
+                          {it.subcategoryName && <span className="ml-1.5 text-xs text-gray-400">({it.subcategoryName})</span>}
+                          <span className="ml-2 text-xs text-gray-500">Remaining: {effectiveAvail - draftQty}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={effectiveAvail}
+                            placeholder="qty"
+                            value={draftQty || ""}
+                            onChange={(e) => setQty(it.id, Number(e.target.value))}
+                            className="h-8 w-16 text-center"
+                          />
+                          {isSelected && (
+                            <button onClick={() => clearDraftItem(it.id)} className="text-xs text-red-400 hover:text-red-600">×</button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </>
       )}
 
       {/* Reserve button */}
-      <Button
-        className="mt-3 w-full shrink-0"
-        variant="success"
-        onClick={reserve}
-        disabled={pending || draftCount === 0}
-      >
-        {pending ? "Reserving..." : `Reserve All (${draftCount} item${draftCount !== 1 ? "s" : ""})`}
-      </Button>
+      {selectedCat !== null && (
+        <Button
+          className="mt-3 w-full shrink-0"
+          variant="success"
+          onClick={reserve}
+          disabled={pending || draftCount === 0}
+        >
+          {pending ? "Reserving..." : `Reserve All (${draftCount} item${draftCount !== 1 ? "s" : ""})`}
+        </Button>
+      )}
     </Card>
   );
 }
