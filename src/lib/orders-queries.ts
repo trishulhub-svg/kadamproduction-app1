@@ -76,7 +76,7 @@ export async function getOrderDetail(orderId: number) {
   const order = await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).limit(1).then((r) => r[0]);
   if (!order) return null;
 
-  const [orderItems, assignments, transactions, allItems, employees, subcategories, committedRows, categories] = await Promise.all([
+  const [orderItems, assignments, transactions, allItems, employees, subcategories, committedRows, categories, teams, teamMemberRows] = await Promise.all([
     db
       .select({
         id: schema.orderItems.id,
@@ -118,6 +118,8 @@ export async function getOrderDetail(orderId: number) {
       ))
       .groupBy(schema.orderItems.itemId),
     db.select({ id: schema.categories.id, name: schema.categories.name }).from(schema.categories),
+    db.select({ id: schema.teams.id, name: schema.teams.name, description: schema.teams.description }).from(schema.teams).where(isNull(schema.teams.deletedAt)),
+    db.select({ teamId: schema.teamMembers.teamId, userId: schema.teamMembers.userId, name: schema.users.name }).from(schema.teamMembers).innerJoin(schema.users, eq(schema.teamMembers.userId, schema.users.id)),
   ]);
 
   const committedMap = Object.fromEntries(committedRows.map((r) => [r.itemId, Number(r.committed)]));
@@ -127,5 +129,11 @@ export async function getOrderDetail(orderId: number) {
   }
 
   const paid = transactions.filter((t) => t.type === "income").reduce((a, t) => a + Number(t.amount), 0);
-  return { order, orderItems, assignments, transactions, allItems, employees, subcategories, itemAvail, paid, categories };
+
+  const teamsWithMembers = teams.map((t) => ({
+    ...t,
+    members: teamMemberRows.filter((m) => m.teamId === t.id).map((m) => ({ userId: m.userId, name: m.name })),
+  }));
+
+  return { order, orderItems, assignments, transactions, allItems, employees, subcategories, itemAvail, paid, categories, teams: teamsWithMembers };
 }

@@ -9,6 +9,7 @@ import { updateOrderStatus, saveAssignments, reserveItems, unreserveItem, update
 import { formatINR, formatDateDMY } from "@/lib/utils";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 type SubCat = { id: number; name: string; categoryId: number };
+type TeamType = { id: number; name: string; description: string | null; members: { userId: number; name: string }[] };
 
 type Detail = {
   order: { id: number; clientName: string; contactPerson: string | null; contactPhone: string | null; contactEmail: string | null; eventDate: string | null; eventTime: string | null; setupDate: string | null; setupTime: string | null; address: string | null; billingAddress: string | null; totalBudget: number; status: string; eventCategory: string | null; gstEnabled: boolean | null; createdAt: Date | null };
@@ -20,10 +21,11 @@ type Detail = {
   subcategories: { id: number; name: string; categoryId: number }[];
   categories: { id: number; name: string }[];
   employees: { id: number; name: string }[];
+  teams: TeamType[];
 };
 
 export function ManageOrderView({ detail }: { detail: Detail }) {
-  const { order, orderItems = [], assignments = [], allItems = [], itemAvail = {}, paid = 0, subcategories = [], categories = [] } = detail;
+  const { order, orderItems = [], assignments = [], allItems = [], itemAvail = {}, paid = 0, subcategories = [], categories = [], teams = [], employees = [] } = detail;
   if (!order) return <Card className="p-8 text-center"><p className="text-sm text-red-500">Order data unavailable.</p></Card>;
   const due = Math.max(0, Number(order.totalBudget) - paid);
 
@@ -75,7 +77,7 @@ export function ManageOrderView({ detail }: { detail: Detail }) {
             <DetailRow k="Due" v={formatINR(due)} accent blur={!amountsVisible} />
           </Card>
 
-          <WorkforceSection orderId={order.id} assigned={assignments} employees={detail.employees} />
+          <WorkforceSection orderId={order.id} assigned={assignments} employees={employees} teams={teams} />
         </div>
 
         {/* Main: Inventory assignment (spans 2 cols on desktop) */}
@@ -117,38 +119,140 @@ function DetailRow({ k, v, accent, blur }: { k: string; v: unknown; accent?: boo
   );
 }
 
-function WorkforceSection({ orderId, assigned, employees }: { orderId: number; assigned: { userId: number; name: string }[]; employees: { id: number; name: string }[] }) {
+function WorkforceSection({ orderId, assigned, employees, teams }: { orderId: number; assigned: { userId: number; name: string }[]; employees: { id: number; name: string }[]; teams: TeamType[] }) {
   const [sel, setSel] = useState<number[]>(assigned.map((a) => a.userId));
+  const [search, setSearch] = useState("");
   const [pending, setPending] = useState(false);
+  const assignedIds = new Set(assigned.map((a) => a.userId));
+  const selectedIds = new Set(sel);
+
+  function toggle(id: number) {
+    setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  }
+
+  function toggleTeam(team: TeamType) {
+    const memberIds = team.members.map((m) => m.userId).filter((uid) => uid !== undefined);
+    const allSelected = memberIds.every((uid) => sel.includes(uid));
+    setSel((s) => {
+      if (allSelected) return s.filter((x) => !memberIds.includes(x));
+      const add = memberIds.filter((x) => !s.includes(x));
+      return [...s, ...add];
+    });
+  }
+
+  const filtered = employees.filter((e) => !search || e.name.toLowerCase().includes(search.toLowerCase()));
+  const selCount = sel.length;
+  const changed = selCount !== assigned.length || sel.some((id) => !assignedIds.has(id)) || assigned.some((a) => !sel.includes(a.userId));
+
   async function save() {
     setPending(true);
     await saveAssignments(orderId, sel);
     setPending(false);
   }
+
   return (
     <Card className="p-5">
-      <h3 className="mb-3 text-sm font-semibold text-gray-700">Assign Workforce</h3>
-      {employees.length === 0 ? (
-        <p className="text-sm text-gray-400">No employees available. Add them in Employees.</p>
-      ) : (
-        <div className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
-          {employees.map((e) => {
-            const on = sel.includes(e.id);
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-gray-700">Assign Workforce</h3>
+        {selCount > 0 && (
+          <span className="rounded-full bg-kp-primary px-2.5 py-0.5 text-xs font-bold text-white">{selCount} selected</span>
+        )}
+      </div>
+
+      {/* Search */}
+      <input
+        type="text"
+        placeholder="Search employees..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="mb-3 h-9 w-full rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-sm outline-none focus:border-kp-primary dark:border-gray-700 dark:bg-gray-800/30"
+        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: '8px center', backgroundSize: '14px' }}
+      />
+
+      {/* Teams */}
+      {teams.length > 0 && (
+        <div className="mb-3 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Teams</p>
+          {teams.filter((t) => t.members.length > 0).map((t) => {
+            const memberIds = t.members.map((m) => m.userId);
+            const allSelected = memberIds.every((uid) => sel.includes(uid));
+            const someSelected = memberIds.some((uid) => sel.includes(uid));
             return (
-              <label key={e.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-50">
-                <input
-                  type="checkbox"
-                  checked={on}
-                  onChange={() => setSel((s) => (on ? s.filter((x) => x !== e.id) : [...s, e.id]))}
-                  className="h-4 w-4 accent-kp-primary"
-                />
-                <span className="text-sm">{e.name}</span>
-              </label>
+              <div key={t.id} className="rounded-lg border border-gray-100 bg-gray-50/50 p-2.5 dark:border-gray-700 dark:bg-gray-800/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                      onChange={() => toggleTeam(t)}
+                      className="h-4 w-4 shrink-0 accent-kp-primary"
+                    />
+                    <div className="min-w-0">
+                      <span className="text-sm font-medium">{t.name}</span>
+                      <span className="ml-1.5 text-xs text-gray-400">{t.members.length} member{t.members.length !== 1 ? "s" : ""}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="ml-6 mt-1.5 flex flex-wrap gap-1">
+                  {t.members.map((m) => (
+                    <button
+                      key={m.userId}
+                      onClick={() => toggle(m.userId)}
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition ${sel.includes(m.userId) ? "bg-kp-primary text-white" : "bg-white text-gray-600 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-300"}`}
+                    >
+                      {m.name}
+                      {assignedIds.has(m.userId) && <span className="opacity-60">(assigned)</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
             );
           })}
         </div>
       )}
-      <Button className="mt-3 w-full" onClick={save} disabled={pending}>{pending ? "Saving…" : "Save Assignments"}</Button>
+
+      {/* Individual employees */}
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">All Employees</p>
+        {filtered.length === 0 ? (
+          <p className="text-sm text-gray-400">No employees match your search.</p>
+        ) : (
+          <div className="max-h-56 space-y-0.5 overflow-y-auto pr-1">
+            {filtered.map((e) => {
+              const on = sel.includes(e.id);
+              const isAssigned = assignedIds.has(e.id);
+              const teamNames = teams.filter((t) => t.members.some((m) => m.userId === e.id)).map((t) => t.name);
+              return (
+                <label key={e.id} className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 transition ${on ? "bg-kp-primary/5" : "hover:bg-gray-50 dark:hover:bg-gray-800/30"}`}>
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={() => toggle(e.id)}
+                    className="h-4 w-4 accent-kp-primary"
+                  />
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-bold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                    {e.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium">{e.name}</span>
+                    {isAssigned && <span className="ml-1.5 text-xs text-green-600">✓ assigned</span>}
+                    <div className="flex flex-wrap gap-1">
+                      {teamNames.map((tn) => (
+                        <span key={tn} className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500 dark:bg-gray-700">{tn}</span>
+                      ))}
+                    </div>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <Button className="mt-3 w-full" onClick={save} disabled={pending || !changed}>
+        {pending ? "Saving…" : changed ? `Save Assignments (${selCount})` : "No changes"}
+      </Button>
     </Card>
   );
 }
