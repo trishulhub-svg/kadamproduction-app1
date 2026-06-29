@@ -216,6 +216,7 @@ export async function GET(req: Request) {
       { sql: "ALTER TABLE items ADD COLUMN subcategory_id INTEGER", label: "items.subcategory_id" },
       { sql: "ALTER TABLE items ADD COLUMN description TEXT", label: "items.description" },
       { sql: "ALTER TABLE orders ADD COLUMN setup_done INTEGER NOT NULL DEFAULT 0", label: "orders.setup_done" },
+    { sql: "ALTER TABLE orders ADD COLUMN gst_enabled INTEGER NOT NULL DEFAULT 0", label: "orders.gst_enabled" },
       { sql: "ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1", label: "users.active" },
     ];
     for (const a of alterStmts) {

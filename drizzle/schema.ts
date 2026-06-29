@@ -286,6 +286,27 @@ export const settings = sqliteTable("settings", {
 });
 
 // ──────────────────────────────────────────────────────────────────────────
+// Notifications
+// ──────────────────────────────────────────────────────────────────────────
+export const notifications = sqliteTable(
+  "notifications",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: integer("user_id").notNull().references(() => users.id),
+    orderId: integer("order_id").references(() => orders.id),
+    type: text("type").notNull(),
+    title: text("title").notNull(),
+    message: text("message"),
+    link: text("link"),
+    read: integer("read", { mode: "boolean" }).notNull().default(false),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    userIdx: index("notifications_user_idx").on(t.userId),
+  })
+);
+
+// ──────────────────────────────────────────────────────────────────────────
 // Audit Log (NEW — doesn't exist in PHP)
 // ──────────────────────────────────────────────────────────────────────────
 export const auditLog = sqliteTable(

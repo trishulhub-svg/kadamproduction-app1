@@ -1,6 +1,5 @@
 // src/server/order-actions.ts
 "use server";
-import { createClient } from "@libsql/client";
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
@@ -8,6 +7,9 @@ import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { createNotification } from "./notification-actions";
 import { EVENT_CATEGORIES } from "@/drizzle/schema";
 import type { OrderStatus } from "@/drizzle/schema";
+import { formatOrderNumber } from "@/lib/invoice-number";
+import { formatINR } from "@/lib/utils";
+import { sendEmail } from "@/lib/email";
 
 export async function createOrder(input: {
   clientName: string;
@@ -86,6 +88,7 @@ export async function updateOrder(id: number, input: Record<string, unknown>) {
       if (input[k] !== undefined) patch[k] = input[k] || null;
     }
     if (input.totalBudget !== undefined) patch.totalBudget = Number(input.totalBudget || 0);
+    if (input.gstEnabled !== undefined) patch.gstEnabled = Boolean(input.gstEnabled);
     if (input.eventCategory !== undefined && (EVENT_CATEGORIES as readonly string[]).includes(String(input.eventCategory))) patch.eventCategory = input.eventCategory;
     await db.update(schema.orders).set(patch).where(and(eq(schema.orders.id, id), isNull(schema.orders.deletedAt)));
     revalidatePath("/orders");
@@ -119,8 +122,6 @@ export async function sendInvoiceEmail(orderId: number) {
   const order = await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).limit(1).then((r) => r[0]);
   if (!order) throw new Error("Order not found.");
   if (!order.contactEmail) throw new Error("Order has no contact email.");
-  const { formatOrderNumber } = await import("@/lib/invoice-number");
-  const { formatINR } = await import("@/lib/utils");
   const txns = await db.select().from(schema.finance).where(eq(schema.finance.orderId, orderId));
   const paid = txns.filter((t) => t.type === "income").reduce((a, t) => a + Number(t.amount), 0);
   const total = Number(order.totalBudget);
@@ -147,7 +148,6 @@ export async function sendInvoiceEmail(orderId: number) {
       <p style="font-size:12px;color:#6b7280">Kadam Production — ${new Date().getFullYear()}</p>
     </div>
   `;
-  const { sendEmail } = await import("@/lib/email");
   await sendEmail({ to: order.contactEmail, subject: `Invoice ${orderNum} — Kadam Production`, html });
 }
 
@@ -225,7 +225,7 @@ export async function reserveItems(orderId: number, items: { itemId: number; qty
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
   for (const { itemId, qty } of items) {
-    if (qty <= 0) continue;
+    if (typeof qty !== 'number' || isNaN(qty) || qty <= 0) continue;
     const existing = await db
       .select()
       .from(schema.orderItems)
@@ -251,29 +251,20 @@ export async function unreserveItem(orderId: number, itemId: number) {
 export async function markSetupDone(orderId: number) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
-  const client = createClient({
-    url: process.env.TURSO_DATABASE_URL!,
-    authToken: process.env.TURSO_AUTH_TOKEN!,
-  });
-  await client.execute({
-    sql: "UPDATE orders SET setup_done = 1 WHERE id = ?",
-    args: [orderId],
-  });
-  // Notify all admins
-  const adminRows = await client.execute({
-    sql: "SELECT id FROM users WHERE role = 'admin' AND deleted_at IS NULL",
-    args: [],
-  });
-  const orderRow = await client.execute({
-    sql: "SELECT client_name FROM orders WHERE id = ?",
-    args: [orderId],
-  });
-  const nameRow = orderRow.rows[0] as unknown as { client_name: string } | undefined;
-  const clientName = nameRow?.client_name ?? "Untitled";
-  for (const row of adminRows.rows) {
-    const adminRow = row as unknown as { id: number };
+  await db.update(schema.orders).set({ setupDone: 1 }).where(eq(schema.orders.id, orderId));
+  const admins = await db
+    .select({ id: schema.users.id })
+    .from(schema.users)
+    .where(and(eq(schema.users.role, "admin"), isNull(schema.users.deletedAt)));
+  const [order] = await db
+    .select({ clientName: schema.orders.clientName })
+    .from(schema.orders)
+    .where(eq(schema.orders.id, orderId))
+    .limit(1);
+  const clientName = order?.clientName ?? "Untitled";
+  for (const admin of admins) {
     await createNotification({
-      userId: Number(adminRow.id),
+      userId: admin.id,
       orderId,
       type: "setup_done",
       title: "Setup Completed",

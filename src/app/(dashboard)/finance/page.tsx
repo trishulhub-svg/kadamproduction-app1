@@ -16,7 +16,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   if (sp.type === "expense") conds.push(eq(schema.finance.type, "expense"));
   if (sp.q) {
     const q = `%${sp.q}%`;
-    conds.push(sql`(${schema.finance.category} LIKE ${q} OR COALESCE(${schema.finance.description},'') LIKE ${q})`);
+    conds.push(sql`(${schema.finance.category} LIKE ${q} OR COALESCE(${schema.finance.description},'') LIKE ${q} OR COALESCE(${schema.orders.clientName},'') LIKE ${q})`);
   }
 
   const sortField = sp.sort || "date_desc";
