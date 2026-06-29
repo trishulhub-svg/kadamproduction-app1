@@ -44,7 +44,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           Back to Order
         </a>
         <div className="flex gap-2">
-          <WhatsAppButton phone={order.contactPhone ?? ""} orderNum={orderNum} clientName={order.clientName} total={grandTotal} paid={paid} due={due} invoiceUrl={`${process.env.NEXT_PUBLIC_BASE_URL ?? "https://app.kadamproduction.in"}/orders/${id}/invoice`} />
+          <WhatsAppButton phone={order.contactPhone ?? ""} orderNum={orderNum} clientName={order.clientName} total={grandTotal} paid={paid} due={due} invoiceUrl={`${process.env.NEXT_PUBLIC_BASE_URL ?? "https://app.kadamproduction.in"}/invoice/${id}`} />
           <PrintButton />
         </div>
       </div>
