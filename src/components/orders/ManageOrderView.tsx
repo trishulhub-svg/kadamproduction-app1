@@ -168,10 +168,12 @@ function InventorySection({
   subcategories: SubCat[];
   categories: { id: number; name: string }[];
 }) {
+  const [search, setSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState<number | null>(null);
   const [selectedSub, setSelectedSub] = useState<number | null>(null);
   const [draft, setDraft] = useState<Record<number, number>>({});
   const [pending, setPending] = useState(false);
+  const [reservedOpen, setReservedOpen] = useState(true);
 
   const subToCat = new Map<number, number>();
   subcategories.forEach((s) => subToCat.set(s.id, s.categoryId));
@@ -181,29 +183,25 @@ function InventorySection({
   }
 
   const catsWithItems = categories.filter((c) => allItems.some((i) => itemCategoryId(i) === c.id));
-  const subcategoriesInCat = selectedCat !== null ? subcategories.filter((s) => s.categoryId === selectedCat) : [];
+  const subcatsInCat = selectedCat !== null ? subcategories.filter((s) => s.categoryId === selectedCat) : [];
 
-  const visibleItems = selectedSub !== null
-    ? allItems.filter((i) => i.subcategoryId === selectedSub)
-    : selectedCat !== null
-      ? allItems.filter((i) => itemCategoryId(i) === selectedCat)
-      : [];
+  const filtered = allItems.filter((it) => {
+    if (selectedCat !== null && itemCategoryId(it) !== selectedCat) return false;
+    if (selectedSub !== null && it.subcategoryId !== selectedSub) return false;
+    if (search && !it.name.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
 
   const draftEntries = Object.entries(draft).filter(([, qty]) => qty > 0);
   const draftCount = draftEntries.length;
   const draftTotalQty = draftEntries.reduce((s, [, q]) => s + q, 0);
-
   const itemMap = new Map(allItems.map((i) => [i.id, i]));
 
   function setQty(itemId: number, qty: number) {
     const avail = itemAvail[itemId] ?? itemMap.get(itemId)?.quantity ?? 0;
-    const clamped = Math.min(avail, Math.max(0, qty));
     setDraft((d) => {
-      if (clamped === 0) {
-        const next = { ...d };
-        delete next[itemId];
-        return next;
-      }
+      const clamped = Math.min(avail, Math.max(0, qty));
+      if (clamped === 0) { const n = { ...d }; delete n[itemId]; return n; }
       return { ...d, [itemId]: clamped };
     });
   }
@@ -214,7 +212,7 @@ function InventorySection({
 
   async function reserve() {
     const payload = draftEntries.map(([itemId, qty]) => ({ itemId: Number(itemId), qty }));
-    if (payload.length === 0) return;
+    if (!payload.length) return;
     setPending(true);
     await reserveItems(orderId, payload);
     setDraft({});
@@ -227,164 +225,118 @@ function InventorySection({
         <h3 className="text-sm font-semibold text-gray-700">Assign Inventory</h3>
         {draftCount > 0 && (
           <span className="rounded-full bg-kp-primary px-2.5 py-0.5 text-xs font-bold text-white">
-            {draftCount} · {draftTotalQty} qty
+            {draftCount} · {draftTotalQty}
           </span>
         )}
       </div>
 
-      {/* Reserved items */}
-      <div className="mb-4">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Reserved for this order</p>
-        {orderItems.length === 0 ? (
-          <p className="text-sm text-gray-400">Nothing reserved yet.</p>
-        ) : (
-          <ul className="space-y-1.5">
-            {orderItems.map((oi) => (
-              <li key={oi.id} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-1.5 text-sm">
-                <span>{oi.name} <span className="text-gray-400">x{oi.quantity}</span></span>
-                <UnreserveBtn orderId={orderId} itemId={oi.itemId} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {/* Step 1: Pick Category */}
-      {selectedCat === null ? (
-        <div className="flex-1">
-          <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-gray-400">1. Choose a Category</p>
-          {catsWithItems.length === 0 ? (
-            <p className="text-sm text-gray-400">No inventory categories found.</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-2.5">
-              {catsWithItems.map((c) => {
-                const cnt = allItems.filter((i) => itemCategoryId(i) === c.id).length;
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => { setSelectedCat(c.id); setSelectedSub(null); }}
-                    className="flex flex-col items-center justify-center rounded-xl border border-gray-200 bg-white p-4 text-center transition hover:border-kp-primary hover:shadow-md dark:border-gray-700 dark:bg-gray-800/30"
-                  >
-                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{c.name}</span>
-                    <span className="mt-0.5 text-[11px] text-gray-400">{cnt} item{cnt !== 1 ? "s" : ""}</span>
-                  </button>
-                );
-              })}
-            </div>
+      {orderItems.length > 0 && (
+        <div className="mb-3">
+          <button
+            onClick={() => setReservedOpen(!reservedOpen)}
+            className="flex w-full items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:bg-gray-800/30"
+          >
+            Reserved ({orderItems.length})
+            <span className="text-gray-300">{reservedOpen ? "▲" : "▼"}</span>
+          </button>
+          {reservedOpen && (
+            <ul className="mt-1.5 space-y-1">
+              {orderItems.map((oi) => (
+                <li key={oi.id} className="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm">
+                  <span>{oi.name} <span className="text-gray-400">x{oi.quantity}</span></span>
+                  <UnreserveBtn orderId={orderId} itemId={oi.itemId} />
+                </li>
+              ))}
+            </ul>
           )}
         </div>
+      )}
+
+      {orderItems.length === 0 && (
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Nothing reserved yet</p>
+      )}
+
+      <div className="relative mb-2.5">
+        <input
+          type="text"
+          placeholder="Search items..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-8 pr-3 text-sm outline-none focus:border-kp-primary dark:border-gray-700 dark:bg-gray-800/30"
+        />
+        <svg className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      </div>
+
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        <button onClick={() => { setSelectedCat(null); setSelectedSub(null); }} className={`rounded-full border px-3 py-1 text-xs font-medium transition ${selectedCat === null ? "border-kp-primary bg-kp-primary text-white" : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-600 dark:bg-gray-800/30"}`}>All</button>
+        {catsWithItems.map((c) => (
+          <button key={c.id} onClick={() => { setSelectedCat(c.id); setSelectedSub(null); }} className={`rounded-full border px-3 py-1 text-xs font-medium transition ${selectedCat === c.id ? "border-kp-primary bg-kp-primary text-white" : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-600 dark:bg-gray-800/30"}`}>{c.name}</button>
+        ))}
+      </div>
+
+      {selectedCat !== null && subcatsInCat.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          <button onClick={() => setSelectedSub(null)} className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition ${selectedSub === null ? "border-kp-primary bg-kp-primary/10 text-kp-primary" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"}`}>All</button>
+          {subcatsInCat.map((s) => (
+            <button key={s.id} onClick={() => setSelectedSub(s.id)} className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition ${selectedSub === s.id ? "border-kp-primary bg-kp-primary/10 text-kp-primary" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"}`}>{s.name}</button>
+          ))}
+        </div>
+      )}
+
+      {filtered.length === 0 ? (
+        <p className="py-8 text-center text-sm text-gray-400">No items match your filters.</p>
       ) : (
-        <>
-          {/* Step 2: Back + Pick Subcategory */}
-          <div className="mb-2.5 flex items-center gap-2">
-            <button
-              onClick={() => { setSelectedCat(null); setSelectedSub(null); }}
-              className="text-xs font-medium text-kp-primary hover:underline"
-            >← Back to categories</button>
-            <span className="text-xs text-gray-400">{categories.find((c) => c.id === selectedCat)?.name}</span>
-          </div>
-
-          {selectedSub === null && subcategoriesInCat.length > 0 && (
-            <div className="mb-3">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">2. Pick Subcategory (or browse all)</p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setSelectedSub(-1)}
-                  className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition hover:border-kp-primary ${selectedSub === -1 ? "border-kp-primary bg-kp-primary text-white" : "border-gray-200 bg-white text-gray-600 dark:border-gray-600 dark:bg-gray-800/30 dark:text-gray-300"}`}
-                >All Items</button>
-                {subcategoriesInCat.map((s) => {
-                  const cnt = allItems.filter((i) => i.subcategoryId === s.id).length;
-                  return (
-                    <button
-                      key={s.id}
-                      onClick={() => setSelectedSub(s.id)}
-                      className="rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-xs font-medium text-gray-600 transition hover:border-kp-primary dark:border-gray-600 dark:bg-gray-800/30 dark:text-gray-300"
-                    >
-                      {s.name} <span className="text-gray-400">({cnt})</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {selectedSub === null && subcategoriesInCat.length === 0 && (
-            <div className="mb-3">
-              <button
-                onClick={() => setSelectedSub(-1)}
-                className="rounded-full border border-kp-primary bg-kp-primary px-3.5 py-1.5 text-xs font-medium text-white"
-              >Browse All Items</button>
-            </div>
-          )}
-
-          {/* Step 3: Items */}
-          {selectedSub !== null && (
-            <>
-              <div className="mb-2 flex items-center gap-2">
-                <button
-                  onClick={() => setSelectedSub(null)}
-                  className="text-xs font-medium text-kp-primary hover:underline"
-                >← Back to subcategories</button>
-                <span className="text-xs text-gray-400">
-                  {selectedSub === -1 ? "All Items" : subcategories.find((s) => s.id === selectedSub)?.name}
-                </span>
-              </div>
-
-              {visibleItems.length === 0 ? (
-                <p className="py-8 text-center text-sm text-gray-400">No items found.</p>
-              ) : (
-                <div className="max-h-64 flex-1 space-y-1 overflow-y-auto pr-1">
-                  {visibleItems.map((it) => {
-                    const avail = itemAvail[it.id] ?? it.quantity;
-                    const draftQty = draft[it.id] ?? 0;
-                    const isSelected = draftQty > 0;
-                    const reservedQty = orderItems.find((oi) => oi.itemId === it.id)?.quantity ?? 0;
-                    const effectiveAvail = Math.max(0, avail - reservedQty);
-                    return (
-                      <div
-                        key={it.id}
-                        className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition ${isSelected ? "border-kp-primary bg-gray-50 dark:bg-gray-800/50" : "border-gray-100 dark:border-gray-700"}`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm font-medium">{it.name}</span>
-                          {it.subcategoryName && <span className="ml-1.5 text-xs text-gray-400">({it.subcategoryName})</span>}
-                          <span className="ml-2 text-xs text-gray-500">Remaining: {effectiveAvail - draftQty}</span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <Input
-                            type="number"
-                            min={0}
-                            max={effectiveAvail}
-                            placeholder="qty"
-                            value={draftQty || ""}
-                            onChange={(e) => setQty(it.id, Number(e.target.value))}
-                            className="h-8 w-16 text-center"
-                          />
-                          {isSelected && (
-                            <button onClick={() => clearDraftItem(it.id)} className="text-xs text-red-400 hover:text-red-600">×</button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+        <div className="max-h-64 flex-1 space-y-1.5 overflow-y-auto pr-1">
+          {filtered.map((it) => {
+            const avail = itemAvail[it.id] ?? it.quantity;
+            const draftQty = draft[it.id] ?? 0;
+            const reservedQty = orderItems.find((oi) => oi.itemId === it.id)?.quantity ?? 0;
+            const effectiveAvail = Math.max(0, avail - reservedQty);
+            const remaining = effectiveAvail - draftQty;
+            const pct = effectiveAvail > 0 ? Math.min(100, (remaining / effectiveAvail) * 100) : 0;
+            const barColor = remaining > 5 ? "bg-green-400" : remaining > 2 ? "bg-yellow-400" : remaining > 0 ? "bg-orange-400" : "bg-red-400";
+            return (
+              <div key={it.id} className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 transition ${draftQty > 0 ? "border-kp-primary bg-kp-primary/5" : "border-gray-100 hover:border-gray-200 dark:border-gray-700 dark:hover:border-gray-600"}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{it.name}</span>
+                    {it.subcategoryName && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500 dark:bg-gray-700">{it.subcategoryName}</span>}
+                  </div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="h-1.5 w-16 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                      <div className={`h-full rounded-full ${barColor} transition-all duration-200`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className={`text-xs font-medium ${remaining > 0 ? "text-gray-600" : "text-red-500"}`}>
+                      {remaining > 0 ? `${remaining} left` : "out of stock"}
+                    </span>
+                    {draftQty > 0 && (
+                      <span className="text-xs text-kp-primary font-medium">→ {draftQty} selected</span>
+                    )}
+                  </div>
                 </div>
-              )}
-            </>
-          )}
-        </>
+                <div className="flex items-center gap-2 shrink-0">
+                  <input
+                    type="number"
+                    min={0}
+                    max={effectiveAvail}
+                    placeholder="qty"
+                    value={draftQty || ""}
+                    onChange={(e) => setQty(it.id, Number(e.target.value))}
+                    className="h-8 w-14 rounded-lg border border-gray-200 bg-white text-center text-sm outline-none focus:border-kp-primary dark:border-gray-600 dark:bg-gray-800/30"
+                  />
+                  {draftQty > 0 && (
+                    <button onClick={() => clearDraftItem(it.id)} className="flex h-6 w-6 items-center justify-center rounded-full text-xs text-red-400 hover:bg-red-50 hover:text-red-600">×</button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
 
-      {/* Reserve button */}
-      {selectedCat !== null && (
-        <Button
-          className="mt-3 w-full shrink-0"
-          variant="success"
-          onClick={reserve}
-          disabled={pending || draftCount === 0}
-        >
-          {pending ? "Reserving..." : `Reserve All (${draftCount} item${draftCount !== 1 ? "s" : ""})`}
-        </Button>
-      )}
+      <Button className="mt-3 w-full shrink-0" variant="success" onClick={reserve} disabled={pending || draftCount === 0}>
+        {pending ? "Reserving..." : `Reserve (${draftCount} item${draftCount !== 1 ? "s" : ""})`}
+      </Button>
     </Card>
   );
 }
