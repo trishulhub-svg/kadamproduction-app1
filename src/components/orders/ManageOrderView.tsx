@@ -8,10 +8,19 @@ import { EVENT_CATEGORIES, ORDER_STATUS } from "@/drizzle/schema";
 import { updateOrderStatus, saveAssignments, reserveItems, unreserveItem, updateOrder } from "@/server/order-actions";
 import { formatINR, formatDateDMY } from "@/lib/utils";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
-import { getOrderDetail } from "@/lib/orders-queries";
-
-type Detail = NonNullable<Awaited<ReturnType<typeof getOrderDetail>>>;
 type SubCat = { id: number; name: string; categoryId: number };
+
+type Detail = {
+  order: { id: number; clientName: string; contactPerson: string | null; contactPhone: string | null; contactEmail: string | null; eventDate: string | null; eventTime: string | null; setupDate: string | null; setupTime: string | null; address: string | null; billingAddress: string | null; totalBudget: number; status: string; eventCategory: string | null; gstEnabled: boolean | null; createdAt: Date | null };
+  orderItems: { id: number; itemId: number; name: string; barcode: string; quantity: number; reservedAt: Date | null }[];
+  assignments: { userId: number; name: string }[];
+  allItems: { id: number; name: string; categoryId: number | null; subcategoryId: number | null; quantity: number; status: string; subcategoryName: string | null }[];
+  itemAvail: Record<number, number>;
+  paid: number;
+  subcategories: { id: number; name: string; categoryId: number }[];
+  categories: { id: number; name: string }[];
+  employees: { id: number; name: string }[];
+};
 
 export function ManageOrderView({ detail }: { detail: Detail }) {
   const { order, orderItems = [], assignments = [], allItems = [], itemAvail = {}, paid = 0, subcategories = [], categories = [] } = detail;
