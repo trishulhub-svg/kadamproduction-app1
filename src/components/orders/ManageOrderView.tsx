@@ -172,6 +172,7 @@ function InventorySection({
   const [selectedSub, setSelectedSub] = useState<number | null>(null);
   const [draft, setDraft] = useState<Record<number, number>>({});
   const [pending, setPending] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
 
   const subToCat = new Map<number, number>();
   subcategories.forEach((s) => subToCat.set(s.id, s.categoryId));
@@ -188,12 +189,36 @@ function InventorySection({
       ? allItems.filter((i) => itemCategoryId(i) === selectedCat)
       : allItems.filter((i) => i.subcategoryId === selectedSub);
 
-  const draftCount = Object.values(draft).filter((v) => v > 0).length;
+  const draftEntries = Object.entries(draft).filter(([, qty]) => qty > 0);
+  const draftCount = draftEntries.length;
+  const draftTotalQty = draftEntries.reduce((s, [, q]) => s + q, 0);
+
+  const itemMap = new Map(allItems.map((i) => [i.id, i]));
+
+  function setQty(itemId: number, qty: number) {
+    const avail = itemAvail[itemId] ?? itemMap.get(itemId)?.quantity ?? 0;
+    const clamped = Math.min(avail, Math.max(0, qty));
+    setDraft((d) => {
+      if (clamped === 0) {
+        const next = { ...d };
+        delete next[itemId];
+        return next;
+      }
+      return { ...d, [itemId]: clamped };
+    });
+  }
+
+  function clearDraftItem(itemId: number) {
+    setDraft((d) => { const n = { ...d }; delete n[itemId]; return n; });
+  }
+
+  function clearAllDraft() {
+    if (draftCount === 0) return;
+    setDraft({});
+  }
 
   async function reserve() {
-    const payload = Object.entries(draft)
-      .map(([itemId, qty]) => ({ itemId: Number(itemId), qty }))
-      .filter((x) => x.qty > 0);
+    const payload = draftEntries.map(([itemId, qty]) => ({ itemId: Number(itemId), qty }));
     if (payload.length === 0) return;
     setPending(true);
     await reserveItems(orderId, payload);
@@ -206,7 +231,9 @@ function InventorySection({
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-700">Assign Inventory</h3>
         {draftCount > 0 && (
-          <span className="rounded-full bg-kp-primary px-2.5 py-0.5 text-xs font-bold text-white">{draftCount} selected</span>
+          <button onClick={() => setShowSummary(!showSummary)} className="rounded-full bg-kp-primary px-2.5 py-0.5 text-xs font-bold text-white hover:bg-kp-primary/90">
+            {draftCount} item{draftCount !== 1 ? "s" : ""} · {draftTotalQty} qty
+          </button>
         )}
       </div>
 
@@ -227,13 +254,35 @@ function InventorySection({
         )}
       </div>
 
+      {/* Draft summary (collapsible) */}
+      {draftCount > 0 && showSummary && (
+        <div className="mb-3 rounded-lg border border-kp-primary/30 bg-kp-primary/5 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wide text-kp-primary">Selected Items</p>
+            <button onClick={clearAllDraft} className="text-xs text-red-500 hover:underline">Clear all</button>
+          </div>
+          <div className="max-h-40 space-y-1 overflow-y-auto">
+            {draftEntries.map(([id, qty]) => {
+              const item = itemMap.get(Number(id));
+              if (!item) return null;
+              return (
+                <div key={id} className="flex items-center justify-between rounded bg-white px-2.5 py-1.5 text-sm dark:bg-gray-800/50">
+                  <span>{item.name} <span className="text-gray-400">x{qty}</span></span>
+                  <button onClick={() => clearDraftItem(Number(id))} className="text-xs text-red-400 hover:text-red-600">Remove</button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Category + Subcategory selectors */}
       <div className="mb-3 grid grid-cols-2 gap-2">
         <div>
           <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Category</label>
           <select
             value={selectedCat ?? ""}
-            onChange={(e) => { setSelectedCat(e.target.value ? Number(e.target.value) : null); setSelectedSub(null); setDraft({}); }}
+            onChange={(e) => { setSelectedCat(e.target.value ? Number(e.target.value) : null); setSelectedSub(null); }}
             className="h-9 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm outline-none focus:border-kp-primary dark:border-gray-700 dark:bg-gray-800/30"
           >
             <option value="">— Select Category —</option>
@@ -248,7 +297,7 @@ function InventorySection({
           <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Subcategory</label>
           <select
             value={selectedSub ?? ""}
-            onChange={(e) => { setSelectedSub(e.target.value ? Number(e.target.value) : null); setDraft({}); }}
+            onChange={(e) => setSelectedSub(e.target.value ? Number(e.target.value) : null)}
             disabled={selectedCat === null}
             className="h-9 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm outline-none focus:border-kp-primary disabled:opacity-40 dark:border-gray-700 dark:bg-gray-800/30"
           >
@@ -266,32 +315,36 @@ function InventorySection({
           {visibleItems.length === 0 ? (
             <p className="py-8 text-center text-sm text-gray-400">No items found in this selection.</p>
           ) : (
-            <div className="max-h-72 flex-1 space-y-1 overflow-y-auto pr-1">
+            <div className="max-h-64 flex-1 space-y-1 overflow-y-auto pr-1">
               {visibleItems.map((it) => {
                 const avail = itemAvail[it.id] ?? it.quantity;
                 const draftQty = draft[it.id] ?? 0;
                 const isSelected = draftQty > 0;
+                const reservedQty = orderItems.find((oi) => oi.itemId === it.id)?.quantity ?? 0;
+                const effectiveAvail = Math.max(0, avail - reservedQty);
                 return (
                   <div
                     key={it.id}
-                    className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition ${isSelected ? "border-kp-primary bg-gray-50" : "border-gray-100"}`}
+                    className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition ${isSelected ? "border-kp-primary bg-gray-50 dark:bg-gray-800/50" : "border-gray-100 dark:border-gray-700"}`}
                   >
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium">{it.name}</span>
                       {it.subcategoryName && <span className="ml-1.5 text-xs text-gray-400">({it.subcategoryName})</span>}
-                      <span className="ml-2 text-xs text-gray-500">Avail: {avail}</span>
+                      <span className="ml-2 text-xs text-gray-500">Avail: {effectiveAvail}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <Input
                         type="number"
                         min={0}
-                        max={avail}
+                        max={effectiveAvail}
                         placeholder="qty"
                         value={draftQty || ""}
-                        onChange={(e) => setDraft((d) => ({ ...d, [it.id]: Math.min(avail, Math.max(0, Number(e.target.value))) }))}
+                        onChange={(e) => setQty(it.id, Number(e.target.value))}
                         className="h-8 w-16 text-center"
                       />
-                      {isSelected && <span className="text-xs font-medium text-kp-primary">Added</span>}
+                      {isSelected && (
+                        <button onClick={() => clearDraftItem(it.id)} className="text-xs text-red-400 hover:text-red-600">×</button>
+                      )}
                     </div>
                   </div>
                 );
@@ -308,7 +361,7 @@ function InventorySection({
         onClick={reserve}
         disabled={pending || draftCount === 0}
       >
-        {pending ? "Reserving..." : `Reserve ${draftCount > 0 ? `(${draftCount})` : "Items"}`}
+        {pending ? "Reserving..." : `Reserve All (${draftCount} item${draftCount !== 1 ? "s" : ""})`}
       </Button>
     </Card>
   );
