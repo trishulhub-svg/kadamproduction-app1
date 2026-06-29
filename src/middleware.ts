@@ -3,7 +3,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC = ["/login", "/forgot-password", "/reset-password"];
+const PUBLIC = ["/login", "/forgot-password", "/reset-password", "/invoice"];
 const COOKIE = "kp_session";
 
 async function roleFromToken(token?: string): Promise<"admin" | "employee" | null> {
