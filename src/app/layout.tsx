@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { ThemeProviderWrapper } from "@/components/ThemeProviderWrapper";
 import "./globals.css";
-import AgentationWrapper from "@/components/AgentationWrapper";
-
 export const metadata: Metadata = {
   title: "Kadam Production",
   description: "Professional Event Services — operations dashboard",
@@ -49,7 +47,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProviderWrapper>
           {children}
         </ThemeProviderWrapper>
-        <AgentationWrapper />
       </body>
     </html>
   );
