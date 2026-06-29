@@ -180,10 +180,6 @@ function InventorySection({
     return it.categoryId ?? (it.subcategoryId ? subToCat.get(it.subcategoryId) ?? null : null);
   }
 
-  const categoriesWithCounts = categories
-    .map((c) => ({ ...c, count: allItems.filter((i) => itemCategoryId(i) === c.id).length }))
-    .filter((c) => c.count > 0);
-
   const subcategoriesInCat = selectedCat !== null ? subcategories.filter((s) => s.categoryId === selectedCat) : [];
 
   const visibleItems = selectedCat === null
@@ -204,9 +200,6 @@ function InventorySection({
     setDraft({});
     setPending(false);
   }
-
-  const catName = categories.find((c) => c.id === selectedCat)?.name;
-  const subName = subcategories.find((s) => s.id === selectedSub)?.name;
 
   return (
     <Card className="flex h-full flex-col p-5">
@@ -234,109 +227,78 @@ function InventorySection({
         )}
       </div>
 
-      {/* Breadcrumb */}
+      {/* Category + Subcategory selectors */}
+      <div className="mb-3 grid grid-cols-2 gap-2">
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Category</label>
+          <select
+            value={selectedCat ?? ""}
+            onChange={(e) => { setSelectedCat(e.target.value ? Number(e.target.value) : null); setSelectedSub(null); setDraft({}); }}
+            className="h-9 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm outline-none focus:border-kp-primary dark:border-gray-700 dark:bg-gray-800/30"
+          >
+            <option value="">— Select Category —</option>
+            {categories
+              .filter((c) => allItems.some((i) => itemCategoryId(i) === c.id))
+              .map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Subcategory</label>
+          <select
+            value={selectedSub ?? ""}
+            onChange={(e) => { setSelectedSub(e.target.value ? Number(e.target.value) : null); setDraft({}); }}
+            disabled={selectedCat === null}
+            className="h-9 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm outline-none focus:border-kp-primary disabled:opacity-40 dark:border-gray-700 dark:bg-gray-800/30"
+          >
+            <option value="">{selectedCat === null ? "Select category first" : "— All Items —"}</option>
+            {subcategoriesInCat.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Items table */}
       {selectedCat !== null && (
-        <div className="mb-3 flex items-center gap-1.5 text-sm">
-          <button onClick={() => { setSelectedCat(null); setSelectedSub(null); }} className="text-kp-primary hover:underline">All</button>
-          <span className="text-gray-300">/</span>
-          {selectedSub !== null ? (
-            <button onClick={() => setSelectedSub(null)} className="text-kp-primary hover:underline">{catName}</button>
+        <>
+          {visibleItems.length === 0 ? (
+            <p className="py-8 text-center text-sm text-gray-400">No items found in this selection.</p>
           ) : (
-            <span className="font-semibold text-gray-700">{catName}</span>
-          )}
-          {selectedSub !== null && (
-            <>
-              <span className="text-gray-300">/</span>
-              <span className="font-semibold text-gray-700">{subName}</span>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Category grid */}
-      {selectedCat === null && (
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-          {categoriesWithCounts.length === 0 ? (
-            <p className="col-span-full text-center text-sm text-gray-400 py-8">No inventory categories found.</p>
-          ) : (
-            categoriesWithCounts.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setSelectedCat(c.id)}
-                className="group flex flex-col items-center justify-center rounded-xl border border-gray-200 bg-white p-4 text-center transition hover:border-kp-primary hover:shadow-md dark:border-gray-700 dark:bg-gray-800/30"
-              >
-                <div className="mb-1.5 flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-sm font-bold text-gray-600 transition group-hover:bg-kp-primary group-hover:text-white dark:bg-gray-700 dark:text-gray-300">
-                  {c.name.charAt(0).toUpperCase()}
-                </div>
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{c.name}</span>
-                <span className="mt-0.5 text-[10px] text-gray-400">{c.count} item{c.count !== 1 ? "s" : ""}</span>
-              </button>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* Subcategory chips */}
-      {selectedCat !== null && selectedSub === null && subcategoriesInCat.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-2">
-          {subcategoriesInCat.map((s) => {
-            const cnt = allItems.filter((i) => i.subcategoryId === s.id).length;
-            return (
-              <button
-                key={s.id}
-                onClick={() => setSelectedSub(s.id)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-kp-primary hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/30 dark:text-gray-300"
-              >
-                {s.name}
-                <span className="text-gray-400">{cnt}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Items list */}
-      {selectedCat !== null && visibleItems.length > 0 && (
-        <div className="max-h-64 flex-1 space-y-1.5 overflow-y-auto pr-1">
-          {visibleItems.map((it) => {
-            const avail = itemAvail[it.id] ?? it.quantity;
-            const draftQty = draft[it.id] ?? 0;
-            const previewQty = Math.max(0, avail - draftQty);
-            const isSelected = draftQty > 0;
-            return (
-              <div
-                key={it.id}
-                className={`rounded-lg border px-3 py-2 transition ${isSelected ? "border-kp-primary bg-gray-50 dark:bg-gray-800/50" : "border-gray-100 dark:border-gray-700"}`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="min-w-0">
-                    <span className="text-sm font-medium">{it.name}</span>
-                    {it.subcategoryName && <span className="ml-2 text-xs text-gray-400">{it.subcategoryName}</span>}
+            <div className="max-h-72 flex-1 space-y-1 overflow-y-auto pr-1">
+              {visibleItems.map((it) => {
+                const avail = itemAvail[it.id] ?? it.quantity;
+                const draftQty = draft[it.id] ?? 0;
+                const isSelected = draftQty > 0;
+                return (
+                  <div
+                    key={it.id}
+                    className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition ${isSelected ? "border-kp-primary bg-gray-50" : "border-gray-100"}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium">{it.name}</span>
+                      {it.subcategoryName && <span className="ml-1.5 text-xs text-gray-400">({it.subcategoryName})</span>}
+                      <span className="ml-2 text-xs text-gray-500">Avail: {avail}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={avail}
+                        placeholder="qty"
+                        value={draftQty || ""}
+                        onChange={(e) => setDraft((d) => ({ ...d, [it.id]: Math.min(avail, Math.max(0, Number(e.target.value))) }))}
+                        className="h-8 w-16 text-center"
+                      />
+                      {isSelected && <span className="text-xs font-medium text-kp-primary">Added</span>}
+                    </div>
                   </div>
-                  <span className="text-xs text-gray-500">
-                    Avail: <span className={previewQty < avail ? "font-bold text-kp-warning" : "text-kp-success"}>{previewQty}</span>/{it.quantity}
-                  </span>
-                </div>
-                <div className="mt-1.5 flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={avail}
-                    placeholder="qty"
-                    value={draftQty || ""}
-                    onChange={(e) => setDraft((d) => ({ ...d, [it.id]: Math.min(avail, Math.max(0, Number(e.target.value))) }))}
-                    className="h-8 w-20 sm:w-24"
-                  />
-                  {draftQty > 0 && <span className="text-xs text-gray-400">pending</span>}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {selectedCat !== null && visibleItems.length === 0 && (
-        <p className="py-6 text-center text-sm text-gray-400">No items found here.</p>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
 
       {/* Reserve button */}
