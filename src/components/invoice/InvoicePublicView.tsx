@@ -28,10 +28,14 @@ export function InvoicePublicView({ invoice }: { invoice: InvoiceData }) {
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/invoice-otp?orderId=${order.id}`)
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000);
+    fetch(`/api/invoice-otp?orderId=${order.id}`, { signal: ctrl.signal })
       .then((r) => r.json())
       .then((data) => setStep(data.verified ? "view" : "verify"))
-      .catch(() => setStep("verify"));
+      .catch(() => setStep("verify"))
+      .finally(() => clearTimeout(t));
+    return () => { ctrl.abort(); clearTimeout(t); };
   }, [order.id]);
 
   async function sendOtp(e: React.FormEvent) {
@@ -121,9 +125,15 @@ export function InvoicePublicView({ invoice }: { invoice: InvoiceData }) {
               <button type="submit" disabled={pending || otp.length !== 6} className="h-11 w-full rounded-lg bg-gray-900 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50">
                 {pending ? "Verifying…" : "View Invoice"}
               </button>
-              <button type="button" onClick={() => setStep("verify")} className="w-full text-center text-xs text-gray-500 underline hover:text-gray-700">
-                Use a different email
-              </button>
+              <div className="flex items-center justify-center gap-3">
+                <button type="button" onClick={() => setStep("verify")} className="text-xs text-gray-500 underline hover:text-gray-700">
+                  Use a different email
+                </button>
+                <span className="text-xs text-gray-300">|</span>
+                <button type="button" onClick={async () => { setError(""); setPending(true); try { const r = await fetch("/api/invoice-otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "send_otp", orderId: order.id, email: email.trim() }) }); const d = await r.json(); if (!r.ok) setError(d.error); else setError(""); } catch { setError("Network error."); } setPending(false); }} className="text-xs text-gray-500 underline hover:text-gray-700">
+                  Resend OTP
+                </button>
+              </div>
             </form>
           )}
         </div>

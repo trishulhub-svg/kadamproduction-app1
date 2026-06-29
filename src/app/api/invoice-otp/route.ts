@@ -6,11 +6,9 @@ import { SignJWT, jwtVerify } from "jose";
 import { db, schema } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { formatOrderNumber } from "@/lib/invoice-number";
-import { formatINR } from "@/lib/utils";
 
-const OTP_EXPIRY = 10 * 60 * 1000; // 10 min
+const OTP_EXPIRY = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 3;
-const ACCESS_EXPIRY = 24 * 60 * 60 * 1000; // 24h
 const COOKIE_NAME = "kp_inv_access";
 
 function getSecret(): Uint8Array {
@@ -98,7 +96,7 @@ export async function POST(req: NextRequest) {
 
       await db.delete(schema.settings).where(eq(schema.settings.key, key));
 
-      const token = await new SignJWT({ orderId: Number(orderId), email, verifiedAt: Date.now() })
+      const token = await new SignJWT({ orderId: Number(orderId), email: orderEmail, verifiedAt: Date.now() })
         .setProtectedHeader({ alg: "HS256" })
         .setExpirationTime("24h")
         .sign(getSecret());
