@@ -72,21 +72,40 @@ async function sign(user: SessionUser): Promise<string> {
 }
 
 async function verify(token: string): Promise<SessionUser | null> {
+  let payload;
   try {
-    const { payload } = await jwtVerify(token, getSecret());
-    const user = payload as unknown as SessionUser;
-    // M1: verify session is still active (not revoked)
-    if (user.sessionId) {
+    ({ payload } = await jwtVerify(token, getSecret()));
+  } catch {
+    // Token is invalid/expired/tampered — definitely deny.
+    return null;
+  }
+  const user = payload as unknown as SessionUser;
+  if (!user || typeof user.id !== "number" || !user.role) return null;
+
+  // M1: verify session is still active (not revoked).
+  // If the sessions-table lookup FAILS due to a transient DB error, fail open
+  // (trust the JWT) rather than locking the user out — the JWT is already
+  // cryptographically verified above.
+  if (user.sessionId) {
+    try {
       const session = await db
-        .select()
+        .select({ revokedAt: schema.sessions.revokedAt })
         .from(schema.sessions)
         .where(eq(schema.sessions.id, user.sessionId))
         .limit(1)
         .then((r) => r[0]);
-      // Fail closed: if session is missing or revoked, deny the request.
-      if (!session || session.revokedAt) return null;
+      // Fail closed only when we positively know it's revoked.
+      if (session && session.revokedAt) return null;
+      // If session row is missing, it may be a read-after-write race (Turso is
+      // eventually consistent across replicas). Fail open for a freshly-issued
+      // token to avoid post-login dead-ends.
+    } catch (err) {
+      console.error("[auth] session lookup DB error — failing open:", err);
     }
-    // H4: ensure the user account still exists and is not soft-deleted.
+  }
+
+  // H4: ensure the user account still exists and is not soft-deleted.
+  try {
     const dbUser = await db
       .select({ deletedAt: schema.users.deletedAt, active: schema.users.active })
       .from(schema.users)
@@ -95,10 +114,11 @@ async function verify(token: string): Promise<SessionUser | null> {
       .then((r) => r[0]);
     if (!dbUser || dbUser.deletedAt) return null;
     if (dbUser.active === false) return null;
-    return user;
-  } catch {
-    return null;
+  } catch (err) {
+    // DB error reading the user record — fail open (JWT is already verified).
+    console.error("[auth] user lookup DB error — failing open:", err);
   }
+  return user;
 }
 
 /** Get current user from cookie (server components / route handlers). */

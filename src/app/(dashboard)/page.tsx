@@ -1,4 +1,5 @@
 // src/app/(dashboard)/page.tsx — Dashboard
+import { redirect } from "next/navigation";
 import { Plus, CalendarClock, CalendarCheck, Users, FolderOpen, ClipboardList } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getDashboardStats, countAssignedOrders } from "@/lib/queries";
@@ -9,10 +10,14 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
-  const isAdmin = user?.role === "admin";
+  // If the session can't be verified (DB hiccup, missing session row, revoked),
+  // send the user back to login instead of crashing on a null user.
+  if (!user) redirect("/login");
+
+  const isAdmin = user.role === "admin";
 
   if (!isAdmin) {
-    const assigned = await countAssignedOrders(user!.id);
+    const assigned = await countAssignedOrders(user.id);
     return (
       <div>
         <h1 className="mb-6 text-2xl font-bold text-gray-900">Kadam Production</h1>
