@@ -121,7 +121,15 @@ export async function requireAdmin(): Promise<SessionUser | null> {
 export async function login(email: string, password: string): Promise<{ ok: true; mustChangePwd?: boolean } | { ok: false; error: string }> {
   // H2: Atomic rate limit check (check + increment in one DB call)
   const rl = await generalRateLimit(email, { max: 5, windowMs: 5 * 60 * 1000 });
-  if (!rl.allowed) return { ok: false, error: `Too many attempts. Try again in ${rl.retryAfter}s.` };
+  if (!rl.allowed) {
+    // If the rate-limit DB is down, allow the request through rather than
+    // locking everyone out. Log the incident for monitoring.
+    if (rl.dbError) {
+      console.error("[auth] Rate-limit DB unavailable — allowing login attempt for", email);
+    } else {
+      return { ok: false, error: `Too many attempts. Try again in ${rl.retryAfter ?? 60}s.` };
+    }
+  }
 
   const user = await db
     .select()
@@ -192,7 +200,7 @@ function generateOtp(): string {
 
 export async function sendForgotOtp(email: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const rl = await generalRateLimit(email, { max: 3, windowMs: 10 * 60 * 1000 });
-  if (!rl.allowed) return { ok: false, error: `Too many attempts. Try again in ${rl.retryAfter}s.` };
+  if (!rl.allowed && !rl.dbError) return { ok: false, error: `Too many attempts. Try again in ${rl.retryAfter ?? 60}s.` };
 
   const user = await db
     .select({ id: schema.users.id, name: schema.users.name })
