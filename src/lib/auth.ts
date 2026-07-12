@@ -29,6 +29,8 @@ export type SessionUser = {
 
 async function sign(user: SessionUser): Promise<string> {
   const sessionId = crypto.randomUUID();
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 1000 * 60 * 60 * 24); // 1 day
   // M1: persist session in DB for revocation
   try {
     // Phase 6: Admin 2-device limit — revoke oldest sessions beyond the limit
@@ -39,13 +41,13 @@ async function sign(user: SessionUser): Promise<string> {
         .where(and(
           eq(schema.sessions.userId, user.id),
           isNull(schema.sessions.revokedAt),
-          gte(schema.sessions.expiresAt, new Date()),
+          gte(schema.sessions.expiresAt, now),
         ))
         .orderBy(asc(schema.sessions.createdAt));
 
       const toRevokeCount = Math.max(0, activeSessions.length - MAX_ADMIN_DEVICES + 1);
       for (let i = 0; i < toRevokeCount; i++) {
-        await db.update(schema.sessions).set({ revokedAt: new Date() }).where(eq(schema.sessions.id, activeSessions[i].id));
+        await db.update(schema.sessions).set({ revokedAt: now }).where(eq(schema.sessions.id, activeSessions[i].id));
       }
     }
 
@@ -53,16 +55,19 @@ async function sign(user: SessionUser): Promise<string> {
       id: sessionId,
       userId: user.id,
       refreshToken: sessionId,
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24), // 1 day
+      rotated: false,
+      expiresAt,
+      createdAt: now,
     });
-  } catch {
-    // sessions table might not exist yet — non-fatal
+  } catch (err) {
+    // sessions table might not exist yet — non-fatal, but log for debugging
+    console.error("[auth] Session insert failed:", err);
   }
   return new SignJWT({ ...user, sessionId })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(String(user.id))
     .setIssuedAt()
-    .setExpirationTime("1d") // L3: shortened from 7d
+    .setExpirationTime("1d")
     .sign(getSecret());
 }
 
@@ -131,12 +136,18 @@ export async function login(email: string, password: string): Promise<{ ok: true
     }
   }
 
-  const user = await db
-    .select()
-    .from(schema.users)
-    .where(and(eq(schema.users.email, email.toLowerCase()), isNull(schema.users.deletedAt)))
-    .limit(1)
-    .then((r) => r[0]);
+  let user;
+  try {
+    user = await db
+      .select()
+      .from(schema.users)
+      .where(and(eq(schema.users.email, email.toLowerCase()), isNull(schema.users.deletedAt)))
+      .limit(1)
+      .then((r) => r[0]);
+  } catch (err) {
+    console.error("[auth] DB error fetching user:", err);
+    return { ok: false, error: "Server error. Please try again." };
+  }
 
   // No email enumeration — same generic error as PHP.
   if (!user) {
@@ -147,22 +158,38 @@ export async function login(email: string, password: string): Promise<{ ok: true
   if (user.active === false) {
     return { ok: false, error: "Your account has been deactivated. Contact your administrator." };
   }
-  const match = await bcrypt.compare(password, user.password);
+  let match = false;
+  try {
+    match = await bcrypt.compare(password, user.password);
+  } catch (err) {
+    console.error("[auth] bcrypt compare error:", err);
+    return { ok: false, error: "Server error. Please try again." };
+  }
   if (!match) {
     return { ok: false, error: "Invalid Credentials" };
   }
 
   // H2: Clear rate limit on success
-  await clearRateLimit(email);
+  try {
+    await clearRateLimit(email);
+  } catch (err) {
+    console.error("[auth] clearRateLimit error:", err);
+  }
 
   const store = await cookies();
-  const token = await sign({ id: user.id, name: user.name, email: user.email, role: user.role });
+  let token;
+  try {
+    token = await sign({ id: user.id, name: user.name, email: user.email, role: user.role });
+  } catch (err) {
+    console.error("[auth] sign token error:", err);
+    return { ok: false, error: "Server error. Please try again." };
+  }
   store.set(COOKIE, token, {
     httpOnly: true,
-    sameSite: "strict", // M4: tightened from lax
+    sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24, // L3: 1 day (was 7 days)
+    maxAge: 60 * 60 * 24,
   });
   return { ok: true, mustChangePwd: Boolean(user.mustChangePwd) };
 }
