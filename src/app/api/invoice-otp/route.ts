@@ -13,7 +13,8 @@ const COOKIE_NAME = "kp_inv_access";
 
 function getSecret(): Uint8Array {
   const s = process.env.AUTH_SECRET;
-  return new TextEncoder().encode(s || "dev-secret-invoice");
+  if (!s) throw new Error("AUTH_SECRET is required.");
+  return new TextEncoder().encode(s);
 }
 
 export async function POST(req: NextRequest) {
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
       }
 
       const otpCode = String(Math.floor(100000 + Math.random() * 900000));
-      const hashed = await bcrypt.hash(otpCode, 10);
+      const hashed = await bcrypt.hash(otpCode, 12);
       const value = JSON.stringify({ otp: hashed, email, attempts: 0, createdAt: Date.now() });
 
       if (existing) {

@@ -22,7 +22,7 @@ export async function changePasswordAction(_prev: { ok: boolean; error?: string 
   const current = String(formData.get("current") || "");
   const next = String(formData.get("new") || "");
   const confirmPw = String(formData.get("confirm") || "");
-  if (next.length < 6) return { ok: false, error: "New password must be at least 6 characters." };
+  if (next.length < 8) return { ok: false, error: "New password must be at least 8 characters." };
   if (next !== confirmPw) return { ok: false, error: "Passwords do not match." };
   const res = await changePassword(user.id, current, next);
   return res.ok ? { ok: true } : { ok: false, error: res.error };
@@ -49,7 +49,7 @@ export async function resetPasswordAction(_prev: { ok?: boolean; error?: string 
   const token = String(formData.get("token") || "");
   const password = String(formData.get("password") || "");
   const confirm = String(formData.get("confirm") || "");
-  if (password.length < 6) return { error: "Password must be at least 6 characters." };
+  if (password.length < 8) return { error: "Password must be at least 8 characters." };
   if (password !== confirm) return { error: "Passwords do not match." };
   const res = await resetPasswordWithToken(token, password);
   if (!res.ok) return { error: res.error };

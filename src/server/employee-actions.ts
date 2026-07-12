@@ -18,13 +18,13 @@ export async function createEmployee(input: { name: string; email: string; phone
     phone: input.phone || null,
     password: await hashPassword(input.password),
     role: "employee",
-    mustChangePwd: false,
+    mustChangePwd: true,
   }).then(() =>
     db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, email)).limit(1).then((r) => r[0])
   );
   try {
     const { sendWelcomeEmail } = await import("@/lib/email");
-    await sendWelcomeEmail({ to: email, name: input.name.trim(), password: input.password });
+    await sendWelcomeEmail({ to: email, name: input.name.trim() });
     await dispatchNotification({
       userId: result.id,
       type: "account_created",
@@ -32,7 +32,9 @@ export async function createEmployee(input: { name: string; email: string; phone
       message: `Your account has been created. Check your email for login details.`,
       link: "/my-tasks",
     });
-  } catch {}
+  } catch (err) {
+    console.error("[employee-actions] Failed to send welcome notification:", err);
+  }
   revalidatePath("/employees");
 }
 
@@ -41,12 +43,14 @@ export async function resetPassword(userId: number, newPassword: string) {
   if (!user) throw new Error("Unauthorized");
   const emp = await db.select({ name: schema.users.name, email: schema.users.email }).from(schema.users).where(eq(schema.users.id, userId)).limit(1).then((r) => r[0]);
   if (!emp) throw new Error("Employee not found.");
-  await db.update(schema.users).set({ password: await hashPassword(newPassword) }).where(eq(schema.users.id, userId));
+  await db.update(schema.users).set({ password: await hashPassword(newPassword), mustChangePwd: true }).where(eq(schema.users.id, userId));
   await db.update(schema.sessions).set({ revokedAt: new Date() }).where(and(eq(schema.sessions.userId, userId), isNull(schema.sessions.revokedAt)));
   try {
     const { sendPasswordResetEmail } = await import("@/lib/email");
-    await sendPasswordResetEmail({ to: emp.email, name: emp.name, password: newPassword });
-  } catch {}
+    await sendPasswordResetEmail({ to: emp.email, name: emp.name });
+  } catch (err) {
+    console.error("[employee-actions] Failed to send password reset email:", err);
+  }
   revalidatePath("/employees");
 }
 

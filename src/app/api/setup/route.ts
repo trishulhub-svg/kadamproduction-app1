@@ -184,7 +184,8 @@ export async function GET(req: Request) {
       const { jwtVerify } = await import("jose");
       const cookie = cookieHeader.match(/kp_session=([^;]+)/)?.[1];
       if (cookie) {
-        const secret = new TextEncoder().encode(process.env.AUTH_SECRET || "dev-secret-change-me");
+        const secret = new TextEncoder().encode(process.env.AUTH_SECRET);
+        if (!process.env.AUTH_SECRET) throw new Error("AUTH_SECRET required");
         const { payload } = await jwtVerify(cookie, secret);
         if (payload.role === "admin") authorized = true;
       }
@@ -240,7 +241,7 @@ export async function GET(req: Request) {
     // Seed admin if none exists
     const existing = await client.execute("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
     if (existing.rows.length === 0) {
-      const hash = await bcrypt.hash("admin123", 10);
+      const hash = await bcrypt.hash("admin123", 12);
       await client.execute({
         sql: "INSERT INTO users (name, email, password, role, must_change_pwd) VALUES (?, ?, ?, 'admin', 1)",
         args: ["KP Admin", "admin@kadamproduction.in", hash],

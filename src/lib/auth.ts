@@ -4,19 +4,16 @@ import { cookies } from "next/headers";
 import { eq, and, isNull, gte, asc } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db, schema } from "./db";
-import { checkRateLimit as generalRateLimit } from "./rate-limiter";
+import { checkRateLimit as generalRateLimit, clearRateLimit } from "./rate-limiter";
 
 const COOKIE = "kp_session";
 const MAX_ADMIN_DEVICES = 2;
 
-// H1: No weak fallback in production
+// H1: No weak fallback — AUTH_SECRET is always required.
 function getSecret(): Uint8Array {
   const s = process.env.AUTH_SECRET;
   if (!s) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("AUTH_SECRET is required in production.");
-    }
-    return new TextEncoder().encode("dev-secret-change-me");
+    throw new Error("AUTH_SECRET is required. Set it in your environment (.env.local).");
   }
   return new TextEncoder().encode(s);
 }
@@ -75,18 +72,24 @@ async function verify(token: string): Promise<SessionUser | null> {
     const user = payload as unknown as SessionUser;
     // M1: verify session is still active (not revoked)
     if (user.sessionId) {
-      try {
-        const session = await db
-          .select()
-          .from(schema.sessions)
-          .where(eq(schema.sessions.id, user.sessionId))
-          .limit(1)
-          .then((r) => r[0]);
-        if (!session || session.revokedAt) return null;
-      } catch {
-        // sessions table might not exist — allow if DB unavailable
-      }
+      const session = await db
+        .select()
+        .from(schema.sessions)
+        .where(eq(schema.sessions.id, user.sessionId))
+        .limit(1)
+        .then((r) => r[0]);
+      // Fail closed: if session is missing or revoked, deny the request.
+      if (!session || session.revokedAt) return null;
     }
+    // H4: ensure the user account still exists and is not soft-deleted.
+    const dbUser = await db
+      .select({ deletedAt: schema.users.deletedAt, active: schema.users.active })
+      .from(schema.users)
+      .where(eq(schema.users.id, user.id))
+      .limit(1)
+      .then((r) => r[0]);
+    if (!dbUser || dbUser.deletedAt) return null;
+    if (dbUser.active === false) return null;
     return user;
   } catch {
     return null;
@@ -115,65 +118,10 @@ export async function requireAdmin(): Promise<SessionUser | null> {
   return u;
 }
 
-// ──────────────────────────────────────────────────────────────────────────
-// Brute-force protection (legacy)
-// ──────────────────────────────────────────────────────────────────────────
-async function checkRateLimit(email: string): Promise<{ allowed: boolean; error?: string }> {
-  const key = `rl_${email.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
-  try {
-    const row = await db.select().from(schema.settings).where(eq(schema.settings.key, key)).limit(1).then((r) => r[0]);
-    if (row) {
-      const data = JSON.parse(row.value);
-      const now = Date.now();
-      // Reset after 5 minutes
-      if (now - data.firstAttempt > 5 * 60 * 1000) {
-        return { allowed: true };
-      }
-      if (data.count >= 5) {
-        const waitSec = Math.ceil((5 * 60 * 1000 - (now - data.firstAttempt)) / 1000);
-        return { allowed: false, error: `Too many attempts. Try again in ${waitSec}s.` };
-      }
-    }
-  } catch {
-    // settings table might not exist — allow
-  }
-  return { allowed: true };
-}
-
-async function recordFailedAttempt(email: string): Promise<void> {
-  const key = `rl_${email.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
-  try {
-    const row = await db.select().from(schema.settings).where(eq(schema.settings.key, key)).limit(1).then((r) => r[0]);
-    const now = Date.now();
-    if (row) {
-      const data = JSON.parse(row.value);
-      if (now - data.firstAttempt > 5 * 60 * 1000) {
-        // Window expired, reset
-        await db.update(schema.settings).set({ value: JSON.stringify({ count: 1, firstAttempt: now }) }).where(eq(schema.settings.key, key));
-      } else {
-        await db.update(schema.settings).set({ value: JSON.stringify({ count: data.count + 1, firstAttempt: data.firstAttempt }) }).where(eq(schema.settings.key, key));
-      }
-    } else {
-      await db.insert(schema.settings).values({ key, value: JSON.stringify({ count: 1, firstAttempt: now }) });
-    }
-  } catch {
-    // non-fatal
-  }
-}
-
-async function clearRateLimit(email: string): Promise<void> {
-  const key = `rl_${email.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
-  try {
-    await db.delete(schema.settings).where(eq(schema.settings.key, key));
-  } catch {
-    // non-fatal
-  }
-}
-
 export async function login(email: string, password: string): Promise<{ ok: true; mustChangePwd?: boolean } | { ok: false; error: string }> {
-  // H2: Rate limit check
-  const rl = await checkRateLimit(email);
-  if (!rl.allowed) return { ok: false, error: rl.error! };
+  // H2: Atomic rate limit check (check + increment in one DB call)
+  const rl = await generalRateLimit(email, { max: 5, windowMs: 5 * 60 * 1000 });
+  if (!rl.allowed) return { ok: false, error: `Too many attempts. Try again in ${rl.retryAfter}s.` };
 
   const user = await db
     .select()
@@ -184,18 +132,15 @@ export async function login(email: string, password: string): Promise<{ ok: true
 
   // No email enumeration — same generic error as PHP.
   if (!user) {
-    await recordFailedAttempt(email);
     return { ok: false, error: "Invalid Credentials" };
   }
 
   // Deactivation check
   if (user.active === false) {
-    await recordFailedAttempt(email);
     return { ok: false, error: "Your account has been deactivated. Contact your administrator." };
   }
   const match = await bcrypt.compare(password, user.password);
   if (!match) {
-    await recordFailedAttempt(email);
     return { ok: false, error: "Invalid Credentials" };
   }
 
@@ -246,8 +191,8 @@ function generateOtp(): string {
 }
 
 export async function sendForgotOtp(email: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  const rl = await checkRateLimit(email); // Use the same rate limiter as login
-  if (!rl.allowed) return { ok: false, error: rl.error! };
+  const rl = await generalRateLimit(email, { max: 3, windowMs: 10 * 60 * 1000 });
+  if (!rl.allowed) return { ok: false, error: `Too many attempts. Try again in ${rl.retryAfter}s.` };
 
   const user = await db
     .select({ id: schema.users.id, name: schema.users.name })
@@ -258,7 +203,7 @@ export async function sendForgotOtp(email: string): Promise<{ ok: true } | { ok:
   if (!user) return { ok: false, error: "No account found with that email." };
 
   const otp = generateOtp();
-  const hashed = await bcrypt.hash(otp, 10);
+  const hashed = await bcrypt.hash(otp, 12);
   const key = `forgot_otp_${email.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
   await db
     .insert(schema.settings)
