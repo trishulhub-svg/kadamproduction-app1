@@ -52,7 +52,7 @@ function TeamCard({ team, employees }: { team: Team; employees: { id: number; na
         {team.members.length === 0 ? <li className="text-xs text-gray-400">No members</li> : team.members.map((m) => (
           <li key={m.userId} className="flex items-center justify-between rounded bg-gray-50 px-2 py-1 text-sm">
             {m.name}
-            <button onClick={() => removeMember(team.id, m.userId)} className="text-xs text-kp-danger hover:underline">remove</button>
+            <button onClick={() => confirm("Remove this member from the team?") && removeMember(team.id, m.userId)} className="text-xs text-kp-danger hover:underline">remove</button>
           </li>
         ))}
       </ul>
@@ -69,18 +69,26 @@ function TeamCard({ team, employees }: { team: Team; employees: { id: number; na
 
 function AddModal({ onClose }: { onClose: () => void }) {
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setPending(true);
+    setError(null);
     const f = new FormData(e.currentTarget);
-    await createTeam({ name: String(f.get("name")), description: String(f.get("description") || "") });
-    onClose();
+    try {
+      await createTeam({ name: String(f.get("name")), description: String(f.get("description") || "") });
+      onClose();
+    } catch (err) {
+      setError((err as Error).message);
+      setPending(false);
+    }
   }
   return (
     <Modal open onClose={onClose} title="Add Team">
       <form onSubmit={submit} className="space-y-4">
         <div><Label>Name *</Label><Input name="name" required /></div>
         <div><Label>Description</Label><Input name="description" /></div>
+        {error && <p className="text-sm text-kp-danger">{error}</p>}
         <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" type="button" onClick={onClose}>Cancel</Button><Button type="submit" disabled={pending}>{pending ? "Saving…" : "Add"}</Button></div>
       </form>
     </Modal>

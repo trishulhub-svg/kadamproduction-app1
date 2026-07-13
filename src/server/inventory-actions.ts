@@ -12,22 +12,35 @@ export async function createItem(input: { name: string; categoryId?: number; sub
   if (!user) throw new Error("Unauthorized");
   if (!input.subcategoryId) throw new Error("Items must be created under a sub-category.");
   const name = input.name.trim().toUpperCase();
-  await db.insert(schema.items).values({
-    name,
-    categoryId: input.categoryId || null,
-    subcategoryId: input.subcategoryId,
-    description: input.description?.trim() || null,
-    quantity: Number(input.quantity) || 0,
-    barcode: generateBarcode(),
-    status: "available",
-  });
-  revalidatePath("/inventory");
+  // L15: retry the insert on barcode collisions, regenerating the barcode each attempt.
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await db.insert(schema.items).values({
+        name,
+        categoryId: input.categoryId || null,
+        subcategoryId: input.subcategoryId,
+        description: input.description?.trim() || null,
+        quantity: Number(input.quantity) || 0,
+        barcode: generateBarcode(),
+        status: "available",
+      });
+      revalidatePath("/inventory");
+      return;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  console.error("[inventory] barcode collision after 3 attempts:", lastErr);
+  throw new Error("Failed to generate a unique barcode. Please try again.");
 }
 
 export async function quickUpdateQty(itemId: number, newQuantity: number) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
-  await db.update(schema.items).set({ quantity: Math.max(0, Math.floor(newQuantity)) }).where(eq(schema.items.id, itemId));
+  const q = Number(newQuantity);
+  if (isNaN(q)) throw new Error("Quantity must be a valid number.");
+  await db.update(schema.items).set({ quantity: Math.max(0, Math.floor(q)) }).where(eq(schema.items.id, itemId));
   revalidatePath("/inventory");
 }
 
@@ -36,8 +49,8 @@ export async function updateItem(itemId: number, input: { name?: string; categor
   if (!user) throw new Error("Unauthorized");
   const patch: Record<string, unknown> = {};
   if (input.name !== undefined) patch.name = input.name.trim().toUpperCase();
-  if (input.categoryId !== undefined) patch.categoryId = input.categoryId || null;
-  if (input.subcategoryId !== undefined) patch.subcategoryId = input.subcategoryId || null;
+  if (input.categoryId !== undefined) patch.categoryId = input.categoryId == null ? null : input.categoryId;
+  if (input.subcategoryId !== undefined) patch.subcategoryId = input.subcategoryId == null ? null : input.subcategoryId;
   if (input.description !== undefined) patch.description = input.description?.trim() || null;
   if (input.quantity !== undefined) patch.quantity = Math.max(0, Math.floor(input.quantity));
   if (input.status !== undefined) {

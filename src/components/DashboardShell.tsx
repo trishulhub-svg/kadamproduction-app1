@@ -4,6 +4,7 @@ import { useState } from "react";
 import { NotificationBell } from "./NotificationBell";
 import { Menu, X } from "lucide-react";
 import { Sidebar } from "./Sidebar";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function DashboardShell({
   role,
@@ -49,6 +50,7 @@ export function DashboardShell({
             <Menu className="h-6 w-6" />
           </button>
           <span className="flex-1 font-bold">Kadam Production</span>
+          <ThemeToggle />
           <NotificationBell />
         </header>
         {/* Desktop top bar */}

@@ -1,7 +1,7 @@
 // src/components/orders/OrdersView.tsx
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTransition, useState, useEffect } from "react";
+import { useTransition, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Search, X } from "lucide-react";
 import { Button, Input, Select, Modal, Label, Card, EmptyState } from "@/components/ui";
@@ -101,7 +101,7 @@ export function OrdersView({ orders, counts, filters, hasFilter, openNew }: Prop
             <Label>Search</Label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input placeholder="client / address" className="pl-9" defaultValue={filters.search || ""} onBlur={(e) => setFilter("search", e.target.value)} />
+              <Input placeholder="client / address" className="pl-9" defaultValue={filters.search || ""} onBlur={(e) => setFilter("search", e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") setFilter("search", e.currentTarget.value); }} />
             </div>
           </div>
         </div>
@@ -172,6 +172,7 @@ function CreateModal({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [autoSend, setAutoSend] = useState(false);
   const [gstEnabled, setGstEnabled] = useState(false);
+  const emailTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const DRAFT_KEY = "kp_new_order_draft";
   useEffect(() => {
     const saved = localStorage.getItem(DRAFT_KEY);
@@ -188,7 +189,7 @@ function CreateModal({ onClose }: { onClose: () => void }) {
       } catch { /* ignore corrupt draft */ }
     }
   }, []);
-  function saveDraft(name: string) {
+  function saveDraft() {
     const form = document.querySelector<HTMLFormElement>("#create-order-form");
     if (!form) return;
     const fd = new FormData(form);
@@ -235,11 +236,12 @@ function CreateModal({ onClose }: { onClose: () => void }) {
   }
   return (
     <Modal open onClose={onClose} title="Create New Order" className="max-w-2xl">
-      <form id="create-order-form" onSubmit={submit} className="space-y-4" onChange={() => saveDraft("")}>
+      <form id="create-order-form" onSubmit={submit} className="space-y-4" onChange={() => saveDraft()}>
         {error && <div className="rounded-lg bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700">{error}</div>}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div><Label>Client Name *</Label><Input name="clientName" required /></div>
           <div><Label>Contact Phone</Label><Input name="contactPhone" /></div>
+          <div><Label>Event Name / Contact Person</Label><Input name="contactPerson" /></div>
           <div className="sm:col-span-2">
             <Label>Contact Email</Label>
             <Input name="contactEmail" type="email" onBlur={(e) => {
@@ -249,19 +251,22 @@ function CreateModal({ onClose }: { onClose: () => void }) {
                 const warn = document.getElementById("email-case-warn");
                 if (warn) warn.textContent = "Converted to lowercase. Please use all lowercase letters for email.";
               }
-            }} onChange={async (e) => {
+            }} onChange={(e) => {
               const v = e.target.value.trim().toLowerCase();
               const warn = document.getElementById("email-dup-warn");
               if (!warn) return;
               if (v.length < 5 || !v.includes("@")) { warn.textContent = ""; return; }
-              try {
-                const res = await checkEmailDuplicate(v);
-                if (res.length > 0) {
-                  warn.textContent = `This email is used for order #${res[0].id} (${res[0].clientName}).`;
-                } else {
-                  warn.textContent = "";
-                }
-              } catch { warn.textContent = ""; }
+              if (emailTimer.current) clearTimeout(emailTimer.current);
+              emailTimer.current = setTimeout(async () => {
+                try {
+                  const res = await checkEmailDuplicate(v);
+                  if (res.length > 0) {
+                    warn.textContent = `This email is used for order #${res[0].id} (${res[0].clientName}).`;
+                  } else {
+                    warn.textContent = "";
+                  }
+                } catch { warn.textContent = ""; }
+              }, 400);
             }} />
             <p id="email-case-warn" className="mt-1 text-xs text-kp-warning"></p>
             <p id="email-dup-warn" className="mt-1 text-xs text-kp-warning"></p>

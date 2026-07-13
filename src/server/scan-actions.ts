@@ -14,16 +14,19 @@ export async function scanItem(barcode: string, action: "checkout" | "checkin" |
   const item = await db.select().from(schema.items).where(eq(schema.items.barcode, code)).limit(1).then((r) => r[0]);
   if (!item) throw new Error("Item not found for this barcode.");
 
+  if (action !== "checkout" && action !== "checkin" && action !== "damaged") {
+    throw new Error("Invalid scan action.");
+  }
+
   if (action === "checkout") {
     if (!orderId) throw new Error("Select an ongoing event.");
     const order = await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).limit(1).then((r) => r[0]);
     if (!order) throw new Error("Order not found.");
+    if (item.status === "busy" && item.currentOrderId) throw new Error("This item is already checked out to another order. Check it in first.");
     await db.update(schema.items).set({ status: "busy", currentOrderId: orderId }).where(eq(schema.items.id, item.id));
     await db.insert(schema.orderItems).values({ orderId, itemId: item.id, quantity: 1, scannedOutAt: new Date() });
     return { ok: true, msg: `${item.name} → checked out to ${order.clientName}.` };
-  }
-
-  if (action === "checkin") {
+  } else if (action === "checkin") {
     await db.update(schema.items).set({ status: "available", currentOrderId: null }).where(eq(schema.items.id, item.id));
     if (item.currentOrderId) {
       const existing = await db.select().from(schema.orderItems)
@@ -32,9 +35,10 @@ export async function scanItem(barcode: string, action: "checkout" | "checkin" |
       if (existing) await db.update(schema.orderItems).set({ scannedInAt: new Date() }).where(eq(schema.orderItems.id, existing.id));
     }
     return { ok: true, msg: `${item.name} → returned to stock.` };
+  } else if (action === "damaged") {
+    await db.update(schema.items).set({ status: "damaged", currentOrderId: null }).where(eq(schema.items.id, item.id));
+    return { ok: true, msg: `${item.name} → marked damaged.` };
   }
 
-  // damaged
-  await db.update(schema.items).set({ status: "damaged" }).where(eq(schema.items.id, item.id));
-  return { ok: true, msg: `${item.name} → marked damaged.` };
+  throw new Error("Invalid scan action.");
 }

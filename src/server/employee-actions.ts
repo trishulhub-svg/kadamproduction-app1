@@ -9,7 +9,10 @@ import { dispatchNotification } from "./notification-dispatcher";
 export async function createEmployee(input: { name: string; email: string; phone?: string; password: string }) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
+  if (input.name.trim().length < 2) throw new Error("Name must be at least 2 characters.");
   const email = input.email.toLowerCase().trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Invalid email.");
+  if (input.password.length < 8) throw new Error("Password must be at least 8 characters.");
   const exists = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, email)).limit(1);
   if (exists.length) throw new Error("Email already in use.");
   const result = await db.insert(schema.users).values({
@@ -41,8 +44,9 @@ export async function createEmployee(input: { name: string; email: string; phone
 export async function resetPassword(userId: number, newPassword: string) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
-  const emp = await db.select({ name: schema.users.name, email: schema.users.email }).from(schema.users).where(eq(schema.users.id, userId)).limit(1).then((r) => r[0]);
+  const emp = await db.select({ name: schema.users.name, email: schema.users.email }).from(schema.users).where(and(eq(schema.users.id, userId), isNull(schema.users.deletedAt))).limit(1).then((r) => r[0]);
   if (!emp) throw new Error("Employee not found.");
+  if (newPassword.length < 8) throw new Error("Password must be at least 8 characters.");
   await db.update(schema.users).set({ password: await hashPassword(newPassword), mustChangePwd: true }).where(eq(schema.users.id, userId));
   await db.update(schema.sessions).set({ revokedAt: new Date() }).where(and(eq(schema.sessions.userId, userId), isNull(schema.sessions.revokedAt)));
   try {
@@ -72,13 +76,23 @@ export async function updateEmployee(input: { id: number; name: string; email: s
 export async function deleteEmployee(userId: number) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
+  if (user.id === userId) throw new Error("You cannot delete or deactivate your own account.");
+  const emp = await db
+    .select({ id: schema.users.id })
+    .from(schema.users)
+    .where(and(eq(schema.users.id, userId), isNull(schema.users.deletedAt)))
+    .limit(1)
+    .then((r) => r[0]);
+  if (!emp) throw new Error("Employee not found.");
   await db.update(schema.users).set({ deletedAt: new Date() }).where(eq(schema.users.id, userId));
+  await db.update(schema.sessions).set({ revokedAt: new Date() }).where(and(eq(schema.sessions.userId, userId), isNull(schema.sessions.revokedAt)));
   revalidatePath("/employees");
 }
 
 export async function toggleEmployeeActive(userId: number) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
+  if (user.id === userId) throw new Error("You cannot delete or deactivate your own account.");
   const emp = await db
     .select({ active: schema.users.active })
     .from(schema.users)

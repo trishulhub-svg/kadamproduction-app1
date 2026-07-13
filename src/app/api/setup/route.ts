@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@libsql/client";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 const DDL = [
   `CREATE TABLE IF NOT EXISTS users (
@@ -16,7 +17,8 @@ const DDL = [
     must_change_pwd INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    deleted_at INTEGER
+    deleted_at INTEGER,
+    active INTEGER NOT NULL DEFAULT 1
   )`,
   `CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
@@ -175,6 +177,7 @@ export async function GET(req: Request) {
 
   // Allow if a valid admin JWT cookie is present
   let authorized = false;
+  let pendingSessionId: string | undefined;
   if (bootstrapToken && authHeader === `Bearer ${bootstrapToken}`) {
     authorized = true;
   }
@@ -187,7 +190,13 @@ export async function GET(req: Request) {
         const secret = new TextEncoder().encode(process.env.AUTH_SECRET);
         if (!process.env.AUTH_SECRET) throw new Error("AUTH_SECRET required");
         const { payload } = await jwtVerify(cookie, secret);
-        if (payload.role === "admin") authorized = true;
+        if (payload.role === "admin") {
+          // Defer session-revocation check until the DB client is available (H5).
+          authorized = true;
+          if (typeof payload.sessionId === "string" && payload.sessionId) {
+            pendingSessionId = payload.sessionId;
+          }
+        }
       }
     } catch {
       // invalid token
@@ -198,6 +207,26 @@ export async function GET(req: Request) {
   }
 
   const client = createClient({ url, authToken: token });
+
+  // H5: Verify the session hasn't been revoked. Done here because the libsql
+  // client is only created above.
+  if (pendingSessionId) {
+    let sessionValid = false;
+    try {
+      const res = await client.execute({
+        sql: "SELECT revoked_at FROM sessions WHERE id = ?",
+        args: [pendingSessionId],
+      });
+      const row = res.rows[0] as { revoked_at?: number | null } | undefined;
+      sessionValid = !!row && row.revoked_at == null;
+    } catch {
+      // sessions table missing or query failed — treat as unauthorized (fail-closed)
+      sessionValid = false;
+    }
+    if (!sessionValid) {
+      return NextResponse.json({ ok: false, error: "Unauthorized. Session is invalid or revoked." }, { status: 403 });
+    }
+  }
   const log: string[] = [];
   try {
     for (const stmt of DDL) {
@@ -240,18 +269,26 @@ export async function GET(req: Request) {
 
     // Seed admin if none exists
     const existing = await client.execute("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
+    let adminPassword: string | undefined;
     if (existing.rows.length === 0) {
-      const hash = await bcrypt.hash("admin123", 12);
+      adminPassword = crypto.randomBytes(12).toString("base64url");
+      const hash = await bcrypt.hash(adminPassword, 12);
       await client.execute({
         sql: "INSERT INTO users (name, email, password, role, must_change_pwd) VALUES (?, ?, ?, 'admin', 1)",
         args: ["KP Admin", "admin@kadamproduction.in", hash],
       });
-      log.push("Seeded admin → admin@kadamproduction.in / admin123");
+      log.push("Seeded admin → admin@kadamproduction.in");
+      console.log("==========================================================");
+      console.log("[setup] Seeded admin user.");
+      console.log(`[setup] Email:    admin@kadamproduction.in`);
+      console.log(`[setup] Password: ${adminPassword}`);
+      console.log("[setup] Store this password securely — it will not be shown again.");
+      console.log("==========================================================");
     } else {
       log.push("Admin already exists — skipped seeding.");
     }
 
-    return NextResponse.json({ ok: true, log });
+    return NextResponse.json({ ok: true, log, adminPassword });
   } catch {
     return NextResponse.json({ ok: false, error: "Setup failed. Check server logs.", log }, { status: 500 });
   }

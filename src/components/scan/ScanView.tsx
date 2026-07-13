@@ -17,12 +17,14 @@ export function ScanView({ ongoing }: { ongoing: { id: number; clientName: strin
   const [cameraOn, setCameraOn] = useState(false);
   const [camError, setCamError] = useState<string | null>(null);
   const scannerRef = useRef<{ stop: () => Promise<void>; clear: () => void } | null>(null);
+  const cancelledRef = useRef(false);
 
   const READER_ID = "kp-reader";
 
   useEffect(() => {
     return () => {
-      // stop camera on unmount
+      // stop camera on unmount, and ignore any scan still in flight
+      cancelledRef.current = true;
       scannerRef.current?.stop().catch(() => {});
     };
   }, []);
@@ -34,12 +36,14 @@ export function ScanView({ ongoing }: { ongoing: { id: number; clientName: strin
     setMsg(null);
     try {
       const res = await scanItem(value, action, orderId ? Number(orderId) : undefined);
+      if (cancelledRef.current) return; // unmounted/stopped mid-scan — discard result
       setMsg({ ok: true, text: res.msg });
       setBarcode("");
     } catch (err) {
+      if (cancelledRef.current) return;
       setMsg({ ok: false, text: (err as Error).message });
     } finally {
-      setPending(false);
+      if (!cancelledRef.current) setPending(false);
     }
   }
 
@@ -124,7 +128,7 @@ export function ScanView({ ongoing }: { ongoing: { id: number; clientName: strin
 
           {action === "checkout" && (
             <div>
-              <Label>Select Ongoing Event</Label>
+              <Label>Select Active Event</Label>
               <Select value={orderId} onChange={(e) => setOrderId(e.target.value)}>
                 <option value="">— choose event —</option>
                 {ongoing.map((o) => (

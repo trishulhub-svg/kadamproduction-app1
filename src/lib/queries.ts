@@ -47,7 +47,12 @@ export async function listItems(opts?: { categoryId?: number; subcategoryId?: nu
   const committedConds = [inArray(schema.orders.status, activeStatuses)];
   if (opts?.onDate) committedConds.push(eq(schema.orders.eventDate, opts.onDate));
 
-  // Single query with LEFT JOIN to get committed quantities
+  // Single query with LEFT JOINs to get committed quantities.
+  // C6 fix: the orderItems JOIN is unfiltered, so an item's orderItems from
+  // cancelled/completed orders also match. The status filter lives on the
+  // orders LEFT JOIN ON, which NULLs out orders.* for non-active orders but
+  // leaves the orderItem row in place. We therefore gate the summed quantity
+  // on orders.id being non-null so only orderItems tied to active orders count.
   const rows = await db
     .select({
       id: schema.items.id,
@@ -60,7 +65,7 @@ export async function listItems(opts?: { categoryId?: number; subcategoryId?: nu
       description: schema.items.description,
       quantity: schema.items.quantity,
       status: schema.items.status,
-      committed: sql<number>`coalesce(sum(${schema.orderItems.quantity}), 0)`,
+      committed: sql<number>`coalesce(sum(case when ${schema.orders.id} is not null then ${schema.orderItems.quantity} else 0 end), 0)`,
     })
     .from(schema.items)
     .leftJoin(schema.categories, eq(schema.items.categoryId, schema.categories.id))
@@ -110,7 +115,7 @@ export async function getDashboardStats() {
     db
       .select({ v: count() })
       .from(schema.users)
-      .where(and(isNull(schema.users.deletedAt), eq(schema.users.role, "employee"))),
+      .where(and(isNull(schema.users.deletedAt), eq(schema.users.role, "employee"), eq(schema.users.active, true))),
     db.select({ v: count() }).from(schema.categories),
   ]);
 

@@ -1,15 +1,16 @@
 "use client";
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
+import { ClipboardList, CheckCircle, PartyPopper, Ban, RefreshCw, Bell } from "lucide-react";
 import { fetchNotifications, getUnreadCount, markNotificationRead, markAllRead, type Notification } from "@/server/notification-actions";
 
-function notifIcon(type: string): string {
-  if (type === "order_assigned" || type === "team_assigned") return "📋";
-  if (type === "setup_done") return "✅";
-  if (type === "account_created") return "🎉";
-  if (type === "team_removed") return "🚫";
-  if (type === "order_updated") return "🔄";
-  return "🔔";
+function notifIcon(type: string): React.ReactNode {
+  if (type === "order_assigned" || type === "team_assigned") return <ClipboardList className="h-3.5 w-3.5" />;
+  if (type === "setup_done") return <CheckCircle className="h-3.5 w-3.5" />;
+  if (type === "account_created") return <PartyPopper className="h-3.5 w-3.5" />;
+  if (type === "team_removed") return <Ban className="h-3.5 w-3.5" />;
+  if (type === "order_updated") return <RefreshCw className="h-3.5 w-3.5" />;
+  return <Bell className="h-3.5 w-3.5" />;
 }
 
 const IMPORTANT_TYPES = new Set(["password_reset", "account_created", "team_assigned", "setup_done"]);
@@ -52,7 +53,7 @@ export function NotificationBell() {
             <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Notifications</span>
             {unread > 0 && (
               <button onClick={async () => { await markAllRead(); setUnread(0); setNotifs((n) => n.map((x) => ({ ...x, read: 1 }))); }}
-                className="text-xs text-kp-primary hover:underline">Mark all read</button>
+                className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] hover:underline">Mark all read</button>
             )}
           </div>
           <div className="max-h-96 overflow-y-auto">
@@ -76,7 +77,7 @@ function NotifItem({ notif, onRead }: { notif: Notification; onRead: () => void 
   const important = IMPORTANT_TYPES.has(notif.type);
   return (
     <Wrapper>
-      <div className={`flex cursor-pointer items-start gap-3 border-b border-gray-50 px-4 py-3 transition-colors hover:bg-gray-50 dark:border-gray-700/50 dark:hover:bg-gray-800/50 ${!notif.read ? "bg-kp-primary/5" : ""}`} onClick={() => { if (!notif.read) onRead(); }}>
+      <div className={`flex cursor-pointer items-start gap-3 border-b border-gray-50 px-4 py-3 transition-colors hover:bg-gray-50 dark:border-gray-700/50 dark:hover:bg-gray-800/50 ${!notif.read ? "bg-[var(--accent-light)]" : ""}`} onClick={() => { if (!notif.read) onRead(); }}>
         <div className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs ${important ? "bg-amber-100 dark:bg-amber-900/30" : "bg-gray-100 dark:bg-gray-800"}`}>
           {notifIcon(notif.type)}
         </div>

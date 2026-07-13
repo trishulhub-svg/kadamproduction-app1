@@ -59,7 +59,7 @@ export function ForgotPasswordForm({ logoUrl }: { logoUrl: string | null }) {
           {step === "email" && (
             <>
               {emailState?.error && (
-                <div className="mb-4 rounded-lg bg-red-950/50 px-4 py-2.5 text-sm font-medium text-red-400">{emailState.error}</div>
+                <div className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 dark:bg-red-950/50 dark:text-red-400">{emailState.error}</div>
               )}
               <form action={emailAction} className="space-y-4">
                 <div>
@@ -87,7 +87,7 @@ export function ForgotPasswordForm({ logoUrl }: { logoUrl: string | null }) {
           {step === "otp" && (
             <>
               {otpState?.error && (
-                <div className="mb-4 rounded-lg bg-red-950/50 px-4 py-2.5 text-sm font-medium text-red-400">{otpState.error}</div>
+                <div className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 dark:bg-red-950/50 dark:text-red-400">{otpState.error}</div>
               )}
               <form action={otpAction} className="space-y-4">
                 <input type="hidden" name="email" value={email} />
@@ -119,7 +119,7 @@ export function ForgotPasswordForm({ logoUrl }: { logoUrl: string | null }) {
           {step === "reset" && (
             <>
               {resetState?.error && (
-                <div className="mb-4 rounded-lg bg-red-950/50 px-4 py-2.5 text-sm font-medium text-red-400">{resetState.error}</div>
+                <div className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 dark:bg-red-950/50 dark:text-red-400">{resetState.error}</div>
               )}
               <form action={resetAction} className="space-y-4">
                 <input type="hidden" name="token" value={token} />
@@ -129,11 +129,12 @@ export function ForgotPasswordForm({ logoUrl }: { logoUrl: string | null }) {
                     name="password"
                     type="password"
                     required
-                    minLength={6}
+                    minLength={8}
                     autoFocus
                     className="glass-input h-11 w-full rounded-lg px-3 text-sm text-gray-100 placeholder-gray-500 outline-none transition-all focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15"
-                    placeholder="Min. 6 characters"
+                    placeholder="Minimum 8 characters"
                   />
+                  <p className="mt-1 text-xs text-gray-400">Minimum 8 characters</p>
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-300">Confirm Password</label>
@@ -141,7 +142,7 @@ export function ForgotPasswordForm({ logoUrl }: { logoUrl: string | null }) {
                     name="confirm"
                     type="password"
                     required
-                    minLength={6}
+                    minLength={8}
                     className="glass-input h-11 w-full rounded-lg px-3 text-sm text-gray-100 placeholder-gray-500 outline-none transition-all focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15"
                     placeholder="Repeat password"
                   />

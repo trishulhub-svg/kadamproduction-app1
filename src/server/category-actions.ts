@@ -1,7 +1,7 @@
 // src/server/category-actions.ts
 "use server";
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { generateBarcode } from "@/lib/barcode";
@@ -26,8 +26,8 @@ export async function deleteCategory(id: number) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
   const [directItems, itemsInSubs] = await Promise.all([
-    db.select({ id: schema.items.id }).from(schema.items).where(eq(schema.items.categoryId, id)).limit(1),
-    db.select({ id: schema.items.id }).from(schema.items).innerJoin(schema.subcategories, eq(schema.items.subcategoryId, schema.subcategories.id)).where(eq(schema.subcategories.categoryId, id)).limit(1),
+    db.select({ id: schema.items.id }).from(schema.items).where(and(eq(schema.items.categoryId, id), isNull(schema.items.deletedAt))).limit(1),
+    db.select({ id: schema.items.id }).from(schema.items).innerJoin(schema.subcategories, eq(schema.items.subcategoryId, schema.subcategories.id)).where(and(eq(schema.subcategories.categoryId, id), isNull(schema.items.deletedAt))).limit(1),
   ]);
   if (directItems.length > 0 || itemsInSubs.length > 0) {
     throw new Error("Cannot delete a category that has items in its sub-categories.");
@@ -63,7 +63,7 @@ export async function updateSubcategory(id: number, input: { name?: string; desc
 export async function deleteSubcategory(id: number) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
-  const inUse = await db.select({ id: schema.items.id }).from(schema.items).where(eq(schema.items.subcategoryId, id)).limit(1);
+  const inUse = await db.select({ id: schema.items.id }).from(schema.items).where(and(eq(schema.items.subcategoryId, id), isNull(schema.items.deletedAt))).limit(1);
   if (inUse.length > 0) throw new Error("Cannot delete sub-category with items in it.");
   try {
     await db.delete(schema.subcategories).where(eq(schema.subcategories.id, id));
@@ -78,9 +78,13 @@ export async function createCategoryItem(input: { name: string; subcategoryId: n
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
   if (!input.subcategoryId) throw new Error("Items must be created under a sub-category.");
+  // C7: resolve the subcategory's categoryId so the item is filed under the parent category too.
+  const [sub] = await db.select({ categoryId: schema.subcategories.categoryId }).from(schema.subcategories).where(eq(schema.subcategories.id, input.subcategoryId)).limit(1);
+  if (!sub) throw new Error("Sub-category not found.");
   const name = input.name.trim().toUpperCase();
   await db.insert(schema.items).values({
     name,
+    categoryId: sub.categoryId,
     subcategoryId: input.subcategoryId,
     description: input.description?.trim() || null,
     quantity: Number(input.quantity) || 0,

@@ -24,6 +24,7 @@ export async function changePasswordAction(_prev: { ok: boolean; error?: string 
   const confirmPw = String(formData.get("confirm") || "");
   if (next.length < 8) return { ok: false, error: "New password must be at least 8 characters." };
   if (next !== confirmPw) return { ok: false, error: "Passwords do not match." };
+  if (current === next) return { ok: false, error: "New password must be different from your current password." };
   const res = await changePassword(user.id, current, next);
   return res.ok ? { ok: true } : { ok: false, error: res.error };
 }

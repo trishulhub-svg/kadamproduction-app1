@@ -3,9 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
+import { randomInt } from "crypto";
 import { db, schema } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { formatOrderNumber } from "@/lib/invoice-number";
+import { checkRateLimit } from "@/lib/rate-limiter";
 
 const OTP_EXPIRY = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 3;
@@ -40,7 +42,16 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+      // H28: rate-limit OTP requests per email (3 per 10 minutes).
+      const rl = await checkRateLimit(`inv_otp:${email}`, { max: 3, windowMs: 10 * 60 * 1000 });
+      if (!rl.allowed && !rl.dbError) {
+        return NextResponse.json(
+          { error: "Too many OTP requests. Please try again later.", retryAfter: rl.retryAfter },
+          { status: 429, headers: rl.retryAfter ? { "Retry-After": String(rl.retryAfter) } : {} },
+        );
+      }
+
+      const otpCode = String(randomInt(100000, 1000000));
       const hashed = await bcrypt.hash(otpCode, 12);
       const value = JSON.stringify({ otp: hashed, email, attempts: 0, createdAt: Date.now() });
 

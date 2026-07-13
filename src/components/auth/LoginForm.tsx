@@ -1,6 +1,7 @@
 "use client";
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { loginAction } from "@/server/auth-actions";
 import { Film } from "lucide-react";
 
@@ -76,9 +77,9 @@ export function LoginForm({ logoUrl }: { logoUrl: string | null }) {
               {pending ? "Signing in\u2026" : "LOGIN"}
             </button>
             <div className="text-center">
-              <a href="/forgot-password" className="text-xs text-gray-500 hover:text-gray-300 transition-colors dark:text-gray-400 dark:hover:text-gray-200">
+              <Link href="/forgot-password" className="text-xs text-gray-500 hover:text-gray-300 transition-colors dark:text-gray-400 dark:hover:text-gray-200">
                 Forgot password?
-              </a>
+              </Link>
             </div>
           </form>
         </div>

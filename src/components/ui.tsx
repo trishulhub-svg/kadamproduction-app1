@@ -12,7 +12,7 @@ export function Button({
   size?: "sm" | "md" | "lg" | "icon";
 }) {
   const variants: Record<string, string> = {
-    primary: "bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white dark:text-gray-900 shadow-sm",
+    primary: "bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white shadow-sm",
     secondary: "bg-gray-500 hover:bg-gray-600 text-white dark:bg-gray-600 dark:hover:bg-gray-500",
     success: "bg-kp-success hover:bg-emerald-700 text-white",
     warning: "bg-kp-warning hover:bg-amber-600 text-white",
@@ -66,6 +66,11 @@ export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<H
 }
 
 export function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  // L16: native <option> dropdown list uses browser-default styling. We rely on
+  // globals.css setting `color-scheme: dark` on `.dark body` (and `light` on
+  // :root), which makes the OS-rendered option list match the active theme
+  // (dark bg + light text in dark mode). `glass-input` does not override
+  // color-scheme, so no extra handling is needed here.
   return (
     <select
       className={cn(

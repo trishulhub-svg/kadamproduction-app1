@@ -1,4 +1,5 @@
 // src/lib/auth.ts
+import { randomInt } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { eq, and, isNull, gte, asc } from "drizzle-orm";
@@ -31,38 +32,36 @@ async function sign(user: SessionUser): Promise<string> {
   const sessionId = crypto.randomUUID();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 1000 * 60 * 60 * 24); // 1 day
-  // M1: persist session in DB for revocation
-  try {
-    // Phase 6: Admin 2-device limit — revoke oldest sessions beyond the limit
-    if (user.role === "admin") {
-      const activeSessions = await db
-        .select({ id: schema.sessions.id })
-        .from(schema.sessions)
-        .where(and(
-          eq(schema.sessions.userId, user.id),
-          isNull(schema.sessions.revokedAt),
-          gte(schema.sessions.expiresAt, now),
-        ))
-        .orderBy(asc(schema.sessions.createdAt));
+  // M1: persist session in DB for revocation. Errors propagate to the caller
+  // (login()), which returns a generic "Server error" response.
+  // Phase 6: Admin 2-device limit — revoke oldest sessions beyond the limit
+  if (user.role === "admin") {
+    const activeSessions = await db
+      .select({ id: schema.sessions.id })
+      .from(schema.sessions)
+      .where(and(
+        eq(schema.sessions.userId, user.id),
+        isNull(schema.sessions.revokedAt),
+        gte(schema.sessions.expiresAt, now),
+      ))
+      .orderBy(asc(schema.sessions.createdAt));
 
-      const toRevokeCount = Math.max(0, activeSessions.length - MAX_ADMIN_DEVICES + 1);
-      for (let i = 0; i < toRevokeCount; i++) {
-        await db.update(schema.sessions).set({ revokedAt: now }).where(eq(schema.sessions.id, activeSessions[i].id));
-      }
+    // L4: revoke enough sessions so that after inserting the new one, at most
+    // MAX_ADMIN_DEVICES remain.
+    const toRevokeCount = Math.max(0, activeSessions.length - (MAX_ADMIN_DEVICES - 1));
+    for (let i = 0; i < toRevokeCount; i++) {
+      await db.update(schema.sessions).set({ revokedAt: now }).where(eq(schema.sessions.id, activeSessions[i].id));
     }
-
-    await db.insert(schema.sessions).values({
-      id: sessionId,
-      userId: user.id,
-      refreshToken: sessionId,
-      rotated: false,
-      expiresAt,
-      createdAt: now,
-    });
-  } catch (err) {
-    // sessions table might not exist yet — non-fatal, but log for debugging
-    console.error("[auth] Session insert failed:", err);
   }
+
+  await db.insert(schema.sessions).values({
+    id: sessionId,
+    userId: user.id,
+    refreshToken: sessionId,
+    rotated: false,
+    expiresAt,
+    createdAt: now,
+  });
   return new SignJWT({ ...user, sessionId })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(String(user.id))
@@ -242,7 +241,7 @@ export async function hashPassword(plain: string): Promise<string> {
 // ──────────────────────────────────────────────────────────────────────────
 
 function generateOtp(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return String(randomInt(100000, 1000000));
 }
 
 export async function sendForgotOtp(email: string): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -255,7 +254,9 @@ export async function sendForgotOtp(email: string): Promise<{ ok: true } | { ok:
     .where(and(eq(schema.users.email, email.toLowerCase()), isNull(schema.users.deletedAt)))
     .limit(1)
     .then((r) => r[0]);
-  if (!user) return { ok: false, error: "No account found with that email." };
+  // H7: do not reveal whether the email exists — return success without
+  // sending an email so the response is identical either way.
+  if (!user) return { ok: true };
 
   const otp = generateOtp();
   const hashed = await bcrypt.hash(otp, 12);
@@ -305,6 +306,21 @@ export async function verifyForgotOtp(email: string, otp: string): Promise<{ ok:
 
   await db.delete(schema.settings).where(eq(schema.settings.key, key));
 
+  // M2: invalidate any unused password-reset rows for this user before issuing
+  // a fresh reset token, so only the most recent OTP can drive a reset.
+  const user = await db
+    .select({ id: schema.users.id })
+    .from(schema.users)
+    .where(and(eq(schema.users.email, email.toLowerCase()), isNull(schema.users.deletedAt)))
+    .limit(1)
+    .then((r) => r[0]);
+  if (user) {
+    await db
+      .update(schema.passwordResets)
+      .set({ usedAt: new Date() })
+      .where(and(eq(schema.passwordResets.userId, user.id), isNull(schema.passwordResets.usedAt)));
+  }
+
   const resetToken = await new SignJWT({ email: email.toLowerCase(), purpose: "password_reset" })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("15m")
@@ -343,8 +359,10 @@ export async function changePassword(
   current: string,
   next: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const user = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1).then((r) => r[0]);
+  const user = await db.select().from(schema.users).where(and(eq(schema.users.id, userId), isNull(schema.users.deletedAt))).limit(1).then((r) => r[0]);
   if (!user) return { ok: false, error: "User not found" };
+  // L4: prevent setting the new password to the same value as the current one.
+  if (current === next) throw new Error("New password must be different from the current password.");
   if (!(await bcrypt.compare(current, user.password))) return { ok: false, error: "Current password is incorrect" };
   await db.update(schema.users).set({ password: await hashPassword(next), mustChangePwd: false }).where(eq(schema.users.id, userId));
   await db.update(schema.sessions).set({ revokedAt: new Date() }).where(and(eq(schema.sessions.userId, userId), isNull(schema.sessions.revokedAt)));

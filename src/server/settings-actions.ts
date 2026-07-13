@@ -6,12 +6,9 @@ import { db, schema } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 
 async function upsertSetting(key: string, value: string) {
-  const existing = await db.select().from(schema.settings).where(eq(schema.settings.key, key)).limit(1).then((r) => r[0]);
-  if (existing) {
-    await db.update(schema.settings).set({ value }).where(eq(schema.settings.key, key));
-  } else {
-    await db.insert(schema.settings).values({ key, value });
-  }
+  await db.insert(schema.settings)
+    .values({ key, value, updatedAt: new Date() })
+    .onConflictDoUpdate({ target: schema.settings.key, set: { value, updatedAt: new Date() } });
 }
 
 // Logo stored as a data URL so it works on Vercel's read-only filesystem.

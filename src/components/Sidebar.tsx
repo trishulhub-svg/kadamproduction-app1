@@ -77,7 +77,7 @@ export function Sidebar({
           </div>
         )}
         <div className="text-center">
-          <div className="text-base font-bold text-gray-900 dark:text-white">KP Admin</div>
+          <div className="text-base font-bold text-gray-900 dark:text-white">{role === "admin" ? "KP Admin" : "KP Staff"}</div>
           <div className="text-xs text-gray-500 dark:text-white/60">Kadam Production</div>
         </div>
         <div className="mt-3 truncate rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-500 dark:bg-white/10 dark:text-white/70">

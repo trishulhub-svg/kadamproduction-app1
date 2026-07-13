@@ -2,10 +2,6 @@
 import { ChangePasswordView } from "@/components/ChangePasswordView";
 import { Suspense } from "react";
 
-function ForceBanner() {
-  return null; // client component handles via useSearchParams
-}
-
 export default function ChangePasswordPage() {
   return (
     <div>

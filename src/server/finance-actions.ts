@@ -8,11 +8,15 @@ import { requireAdmin } from "@/lib/auth";
 export async function createTransaction(input: { orderId?: number; type: "income" | "expense"; category: string; amount: number; description?: string; date: string }) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
+  const amt = Number(input.amount);
+  if (isNaN(amt) || amt <= 0) throw new Error("Amount must be a positive number.");
+  if (input.type !== "income" && input.type !== "expense") throw new Error("Invalid transaction type.");
+  if (!input.date) throw new Error("Date is required.");
   await db.insert(schema.finance).values({
     orderId: input.orderId || null,
     type: input.type,
     category: input.category.trim() || "General",
-    amount: Number(input.amount) || 0,
+    amount: amt,
     description: input.description || null,
     date: input.date,
   });

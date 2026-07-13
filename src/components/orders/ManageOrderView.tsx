@@ -12,7 +12,7 @@ type SubCat = { id: number; name: string; categoryId: number };
 type TeamType = { id: number; name: string; description: string | null; members: { userId: number; name: string }[] };
 
 type Detail = {
-  order: { id: number; clientName: string; contactPerson: string | null; contactPhone: string | null; contactEmail: string | null; eventDate: string | null; eventTime: string | null; setupDate: string | null; setupTime: string | null; address: string | null; billingAddress: string | null; totalBudget: number; status: string; eventCategory: string | null; gstEnabled: boolean | null; createdAt: Date | null };
+  order: { id: number; clientName: string; contactPerson: string | null; contactPhone: string | null; contactEmail: string | null; transportContactName: string | null; transportContactPhone: string | null; eventDate: string | null; eventTime: string | null; setupDate: string | null; setupTime: string | null; address: string | null; billingAddress: string | null; totalBudget: number; status: string; eventCategory: string | null; gstEnabled: boolean | null; createdAt: Date | null };
   orderItems: { id: number; itemId: number; name: string; barcode: string; quantity: number; reservedAt: Date | null }[];
   assignments: { userId: number; name: string }[];
   allItems: { id: number; name: string; categoryId: number | null; subcategoryId: number | null; quantity: number; status: string; subcategoryName: string | null }[];
@@ -372,17 +372,17 @@ function InventorySection({
       </div>
 
       <div className="mb-2 flex flex-wrap gap-1.5">
-        <button onClick={() => { setSelectedCat(null); setSelectedSub(null); }} className={`rounded-full border px-3 py-1 text-xs font-medium transition ${selectedCat === null ? "border-kp-primary bg-kp-primary text-white" : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-600 dark:bg-gray-800/30"}`}>All</button>
+        <button onClick={() => { setSelectedCat(null); setSelectedSub(null); }} className={`rounded-full border px-3 py-1 text-xs font-medium transition ${selectedCat === null ? "border-kp-primary bg-kp-primary text-white" : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-600 dark:bg-gray-800/30 dark:text-gray-400"}`}>All</button>
         {catsWithItems.map((c) => (
-          <button key={c.id} onClick={() => { setSelectedCat(c.id); setSelectedSub(null); }} className={`rounded-full border px-3 py-1 text-xs font-medium transition ${selectedCat === c.id ? "border-kp-primary bg-kp-primary text-white" : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-600 dark:bg-gray-800/30"}`}>{c.name}</button>
+          <button key={c.id} onClick={() => { setSelectedCat(c.id); setSelectedSub(null); }} className={`rounded-full border px-3 py-1 text-xs font-medium transition ${selectedCat === c.id ? "border-kp-primary bg-kp-primary text-white" : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-600 dark:bg-gray-800/30 dark:text-gray-400"}`}>{c.name}</button>
         ))}
       </div>
 
       {selectedCat !== null && subcatsInCat.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">
-          <button onClick={() => setSelectedSub(null)} className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition ${selectedSub === null ? "border-kp-primary bg-kp-primary/10 text-kp-primary" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"}`}>All</button>
+          <button onClick={() => setSelectedSub(null)} className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition ${selectedSub === null ? "border-kp-primary bg-kp-primary/10 text-kp-primary" : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-600 dark:bg-gray-800/30 dark:text-gray-400"}`}>All</button>
           {subcatsInCat.map((s) => (
-            <button key={s.id} onClick={() => setSelectedSub(s.id)} className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition ${selectedSub === s.id ? "border-kp-primary bg-kp-primary/10 text-kp-primary" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"}`}>{s.name}</button>
+            <button key={s.id} onClick={() => setSelectedSub(s.id)} className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition ${selectedSub === s.id ? "border-kp-primary bg-kp-primary/10 text-kp-primary" : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-600 dark:bg-gray-800/30 dark:text-gray-400"}`}>{s.name}</button>
           ))}
         </div>
       )}
@@ -473,6 +473,8 @@ function EditOrderModal({ order, onClose }: { order: Detail["order"]; onClose: (
         contactPerson: String(f.get("contactPerson") || ""),
         contactPhone: String(f.get("contactPhone") || ""),
         contactEmail: String(f.get("contactEmail") || ""),
+        transportContactName: String(f.get("transportContactName") || ""),
+        transportContactPhone: String(f.get("transportContactPhone") || ""),
         eventDate: String(f.get("eventDate") || ""),
         eventTime: String(f.get("eventTime") || ""),
         setupDate: String(f.get("setupDate") || ""),
@@ -496,7 +498,10 @@ function EditOrderModal({ order, onClose }: { order: Detail["order"]; onClose: (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div><Label>Client Name</Label><Input name="clientName" defaultValue={order.clientName} required /></div>
           <div><Label>Phone</Label><Input name="contactPhone" defaultValue={order.contactPhone ?? ""} /></div>
+          <div><Label>Event Name / Contact Person</Label><Input name="contactPerson" defaultValue={order.contactPerson ?? ""} /></div>
           <div><Label>Email</Label><Input name="contactEmail" defaultValue={order.contactEmail ?? ""} type="email" /></div>
+          <div><Label>Transport Contact Name</Label><Input name="transportContactName" defaultValue={order.transportContactName ?? ""} /></div>
+          <div><Label>Transport Contact Phone</Label><Input name="transportContactPhone" defaultValue={order.transportContactPhone ?? ""} /></div>
           <div><Label>Event Date</Label><Input name="eventDate" defaultValue={order.eventDate ?? ""} type="date" /></div>
           <div><Label>Event Time</Label><Input name="eventTime" defaultValue={order.eventTime ?? ""} type="time" /></div>
           <div><Label>Setup Date</Label><Input name="setupDate" defaultValue={order.setupDate ?? ""} type="date" /></div>
@@ -512,8 +517,8 @@ function EditOrderModal({ order, onClose }: { order: Detail["order"]; onClose: (
           <input type="checkbox" name="gstEnabled" defaultChecked={!!order.gstEnabled} className="h-4 w-4 accent-kp-primary" />
           GST Invoice
         </label>
-        <div><Label>Event Address</Label><textarea name="address" defaultValue={order.address ?? ""} rows={2} className="glass-input w-full rounded-lg px-3 py-2 text-sm outline-none" /></div>
-        <div><Label>Billing Address</Label><textarea name="billingAddress" defaultValue={order.billingAddress ?? ""} rows={2} className="glass-input w-full rounded-lg px-3 py-2 text-sm outline-none" /></div>
+        <div><Label>Event Address</Label><textarea name="address" defaultValue={order.address ?? ""} rows={2} className="glass-input w-full rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20" /></div>
+        <div><Label>Billing Address</Label><textarea name="billingAddress" defaultValue={order.billingAddress ?? ""} rows={2} className="glass-input w-full rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20" /></div>
         {error && <p className="text-sm text-kp-danger">{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>

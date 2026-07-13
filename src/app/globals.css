@@ -9,10 +9,15 @@
   --text-secondary: #475569;
   --text-muted: #94a3b8;
 
-  --accent: #0f172a;
-  --accent-hover: #1e293b;
-  --accent-light: rgba(15, 23, 42, 0.06);
-  --accent-glow: rgba(15, 23, 42, 0.08);
+  /* Brand accent is a visible blue in BOTH light and dark modes.
+     Previously --accent was #0f172a (near-black) which made primary
+     buttons invisible (white text on near-black in light mode was fine,
+     but in dark mode --accent flipped to #f1f5f9 and text was also remapped
+     to #f1f5f9 → white-on-white). A single blue stays legible everywhere. */
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-light: rgba(37, 99, 235, 0.08);
+  --accent-glow: rgba(37, 99, 235, 0.12);
 
   --glass-bg: rgba(255, 255, 255, 0.65);
   --glass-border: rgba(255, 255, 255, 0.75);
@@ -30,11 +35,11 @@
 
   --overlay-bg: rgba(15, 23, 42, 0.25);
   --scrollbar-thumb: #cbd5e1;
-  --nav-hover: rgba(15, 23, 42, 0.04);
-  --nav-active-bg: rgba(15, 23, 42, 0.08);
-  --nav-active-text: #0f172a;
+  --nav-hover: rgba(37, 99, 235, 0.06);
+  --nav-active-bg: rgba(37, 99, 235, 0.1);
+  --nav-active-text: #1d4ed8;
 
-  --brand-gradient: linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #020617 100%);
+  --brand-gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 50%, #1e40af 100%);
 }
 
 .dark {
@@ -42,12 +47,12 @@
   --bg-secondary: #0a0c12;
   --text: #f1f5f9;
   --text-secondary: #94a3b8;
-  --text-muted: #475569;
+  --text-muted: #64748b;
 
-  --accent: #f1f5f9;
-  --accent-hover: #e2e8f0;
-  --accent-light: rgba(241, 245, 249, 0.08);
-  --accent-glow: rgba(241, 245, 249, 0.12);
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-light: rgba(59, 130, 246, 0.12);
+  --accent-glow: rgba(59, 130, 246, 0.18);
 
   --glass-bg: rgba(15, 18, 28, 0.55);
   --glass-border: rgba(255, 255, 255, 0.08);
@@ -65,11 +70,11 @@
 
   --overlay-bg: rgba(0, 0, 0, 0.6);
   --scrollbar-thumb: #1e293b;
-  --nav-hover: rgba(241, 245, 249, 0.05);
-  --nav-active-bg: rgba(241, 245, 249, 0.1);
-  --nav-active-text: #f1f5f9;
+  --nav-hover: rgba(255, 255, 255, 0.06);
+  --nav-active-bg: rgba(59, 130, 246, 0.16);
+  --nav-active-text: #93c5fd;
 
-  --brand-gradient: linear-gradient(135deg, #121624 0%, #080a10 50%, #030406 100%);
+  --brand-gradient: linear-gradient(135deg, #2563eb 0%, #1e40af 50%, #1e3a8a 100%);
 }
 
 @keyframes theme-wipe-in {
@@ -142,23 +147,13 @@ body {
 }
 
 @layer utilities {
-  .dark .text-gray-900 { color: #f1f5f9; }
-  .dark .text-gray-800 { color: #e2e8f0; }
-  .dark .text-gray-700 { color: #cbd5e1; }
-  .dark .text-gray-600 { color: #94a3b8; }
-  .dark .text-gray-500 { color: #64748b; }
-  .dark .text-gray-400 { color: #475569; }
-  .dark .text-gray-300 { color: #334155; }
-  .dark .text-gray-200 { color: #1e293b; }
-  .dark .bg-gray-50 { background-color: rgba(255,255,255,0.02); }
-  .dark .bg-gray-100 { background-color: rgba(255,255,255,0.03); }
-  .dark .hover\:bg-gray-50:hover { background-color: rgba(255,255,255,0.04); }
-  .dark .hover\:bg-gray-100:hover { background-color: rgba(255,255,255,0.05); }
-  .dark .border-gray-100 { border-color: rgba(255,255,255,0.06); }
-  .dark .border-gray-200 { border-color: rgba(255,255,255,0.05); }
-  .dark .border-gray-300 { border-color: rgba(255,255,255,0.08); }
-  .dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255,255,255,0.06); }
-  .dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255,255,255,0.05); }
+  /* NOTE: The previous block here indiscriminately overrode ALL
+     `.dark .text-gray-*` / `.dark .bg-gray-*` / `.dark .border-gray-*`
+     utilities with hand-picked hex values (e.g. `.dark .text-gray-300
+     { color:#334155 }`), which collided with Tailwind's own `dark:`
+     variant and made text, links, and highlights invisible everywhere
+     (issues C2, C3, H23, H24, H25, H26, L14, L24). It has been removed
+     so Tailwind's built-in dark palette works as intended. */
 }
 .dark body { color-scheme: dark; }
 :root { color-scheme: light; }

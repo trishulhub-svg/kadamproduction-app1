@@ -71,10 +71,10 @@ export function FinanceView({ summary, transactions, orders, startDate, endDate 
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-gray-900">Finance</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Finance</h1>
         <button
           onClick={() => setAmountsVisible(!amountsVisible)}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
         >
           {amountsVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           {amountsVisible ? "Hide" : "Show"}
@@ -83,17 +83,17 @@ export function FinanceView({ summary, transactions, orders, startDate, endDate 
 
       {/* Summary cards - clickable */}
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard icon={TrendingUp} label="Total Income" value={formatINR(summary.totalIncome)} bg="from-gray-800/20 to-gray-900/10 border-gray-200/40 text-gray-900" visible={amountsVisible} active={typeFilter === "income"} onClick={() => setParam("type", typeFilter === "income" ? "" : "income")} />
-        <SummaryCard icon={TrendingDown} label="Total Expenses" value={formatINR(summary.totalExpenses)} bg="from-red-500/20 to-red-600/10 border-red-200/40 text-red-900" visible={amountsVisible} active={typeFilter === "expense"} onClick={() => setParam("type", typeFilter === "expense" ? "" : "expense")} />
-        <SummaryCard icon={Wallet} label="Total Due" value={formatINR(summary.totalDue)} bg="from-gray-800/20 to-gray-900/10 border-gray-200/40 text-gray-900" visible={amountsVisible} active={typeFilter === "due"} onClick={() => setParam("type", typeFilter === "due" ? "" : "due")} />
-        <SummaryCard icon={IndianRupee} label="Net Profit" value={formatINR(summary.netProfit)} bg="from-gray-800/20 to-gray-900/10 border-gray-200/40 text-gray-900" visible={amountsVisible} active={false} onClick={() => {}} />
+        <SummaryCard icon={TrendingUp} label="Total Income" value={formatINR(summary.totalIncome)} bg="from-gray-800/20 to-gray-900/10 border-gray-200/40 dark:border-gray-700/40 text-gray-900 dark:text-gray-100" visible={amountsVisible} active={typeFilter === "income"} onClick={() => setParam("type", typeFilter === "income" ? "" : "income")} />
+        <SummaryCard icon={TrendingDown} label="Total Expenses" value={formatINR(summary.totalExpenses)} bg="from-red-500/20 to-red-600/10 border-red-200/40 dark:border-red-500/20 text-red-700 dark:text-red-300" visible={amountsVisible} active={typeFilter === "expense"} onClick={() => setParam("type", typeFilter === "expense" ? "" : "expense")} />
+        <SummaryCard icon={Wallet} label="Total Due" value={formatINR(summary.totalDue)} bg="from-gray-800/20 to-gray-900/10 border-gray-200/40 dark:border-gray-700/40 text-gray-900 dark:text-gray-100" visible={amountsVisible} active={typeFilter === "due"} onClick={() => setParam("type", typeFilter === "due" ? "" : "due")} />
+        <SummaryCard icon={IndianRupee} label="Net Profit" value={formatINR(summary.netProfit)} bg="from-gray-800/20 to-gray-900/10 border-gray-200/40 dark:border-gray-700/40 text-gray-900 dark:text-gray-100" visible={amountsVisible} active={false} onClick={() => {}} />
       </div>
 
       {/* Filters */}
       <Card className="mb-4 flex flex-wrap items-end gap-3 p-3">
-        <div className="flex-1 min-w-[160px]"><label className="mb-1 block text-xs font-medium text-gray-500">Start</label><Input type="date" value={startDate || ""} onChange={(e) => setParam("startDate", e.target.value)} /></div>
-        <div className="flex-1 min-w-[160px]"><label className="mb-1 block text-xs font-medium text-gray-500">End</label><Input type="date" value={endDate || ""} onChange={(e) => setParam("endDate", e.target.value)} /></div>
-        <div className="min-w-[140px]"><label className="mb-1 block text-xs font-medium text-gray-500">Sort</label>
+        <div className="flex-1 min-w-[160px]"><label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Start</label><Input type="date" value={startDate || ""} onChange={(e) => setParam("startDate", e.target.value)} /></div>
+        <div className="flex-1 min-w-[160px]"><label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">End</label><Input type="date" value={endDate || ""} onChange={(e) => setParam("endDate", e.target.value)} /></div>
+        <div className="min-w-[140px]"><label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Sort</label>
           <select value={sort} onChange={(e) => setParam("sort", e.target.value)} className="glass-input h-10 w-full rounded-lg px-3 text-sm outline-none">
             {SORT_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
@@ -111,7 +111,7 @@ export function FinanceView({ summary, transactions, orders, startDate, endDate 
             className="glass-input h-10 w-full rounded-lg pl-9 pr-8 text-sm outline-none"
           />
           {q && (
-            <button onClick={() => setParam("q", "")} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 hover:text-gray-600">
+            <button onClick={() => setParam("q", "")} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-200">
               <X className="h-4 w-4" />
             </button>
           )}
@@ -121,17 +121,17 @@ export function FinanceView({ summary, transactions, orders, startDate, endDate 
       {/* Active filter indicator */}
       {hasActiveFilter && (
         <div className="mb-3 flex items-center gap-2 text-xs text-gray-500">
-          <span className="rounded bg-gray-100 px-2 py-0.5 dark:bg-gray-800">
+          <span className="rounded bg-gray-100 dark:bg-gray-800 px-2 py-0.5">
             {typeFilter ? (typeFilter === "due" ? "Due entries" : `${typeFilter} entries`) : "All entries"}
           </span>
-          {q && <span className="rounded bg-gray-100 px-2 py-0.5 dark:bg-gray-800">Search: &ldquo;{q}&rdquo;</span>}
-          <button onClick={clearFilters} className="ml-auto font-medium text-gray-700 hover:text-gray-900">Clear</button>
+          {q && <span className="rounded bg-gray-100 dark:bg-gray-800 px-2 py-0.5">Search: &ldquo;{q}&rdquo;</span>}
+          <button onClick={clearFilters} className="ml-auto font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100">Clear</button>
         </div>
       )}
 
       {!hasDateFilter ? (
         <Card className="p-8 text-center">
-          <p className="text-sm text-gray-500">Select a date range to view transactions.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Select a date range to view transactions.</p>
         </Card>
       ) : (
         <Card className="overflow-hidden">
@@ -140,15 +140,15 @@ export function FinanceView({ summary, transactions, orders, startDate, endDate 
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[700px] text-left text-sm">
-                <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <thead className="bg-gray-50 dark:bg-gray-800/50 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                   <tr><th className="px-4 py-3">Date</th><th className="px-4 py-3">Order / Client</th><th className="px-4 py-3">Category</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Amount</th><th className="px-4 py-3">Contact</th><th className="px-4 py-3 text-right">Actions</th></tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700/60">
                   {filtered.map((t) => (
-                    <tr key={t.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDateDMY(t.date)}</td>
-                      <td className="px-4 py-3 text-gray-900 max-w-[180px] truncate">{t.orderLabel ?? "General"}</td>
-                      <td className="px-4 py-3 text-gray-600">{t.category}</td>
+                    <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">{formatDateDMY(t.date)}</td>
+                      <td className="px-4 py-3 text-gray-900 dark:text-gray-100 max-w-[180px] truncate">{t.orderLabel ?? "General"}</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{t.category}</td>
                       <td className="px-4 py-3"><StatusBadge status={t.type} /></td>
                       <td className={`px-4 py-3 font-semibold whitespace-nowrap ${amountsVisible ? "" : "blur-sm select-none"} ${t.type === "income" ? "text-kp-success" : "text-kp-danger"}`}>
                         {t.type === "income" ? "+" : "\u2212"}{formatINR(t.amount)}
@@ -156,10 +156,10 @@ export function FinanceView({ summary, transactions, orders, startDate, endDate 
                       <td className="px-4 py-3">
                         {t.contactPhone ? (
                           <div className="flex gap-1.5">
-                            <a href={`tel:${t.contactPhone}`} className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition" title="Call">
+                            <a href={`tel:${t.contactPhone}`} className="rounded-lg p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition" title="Call">
                               <Phone className="h-4 w-4" />
                             </a>
-                            <a href={`https://wa.me/${t.contactPhone.replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="rounded-lg p-1.5 text-gray-500 hover:bg-emerald-50 hover:text-emerald-600 transition" title="WhatsApp">
+                            <a href={`https://wa.me/${t.contactPhone.replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="rounded-lg p-1.5 text-gray-500 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 hover:text-emerald-600 dark:hover:text-emerald-400 transition" title="WhatsApp">
                               <MessageCircle className="h-4 w-4" />
                             </a>
                           </div>
@@ -216,16 +216,16 @@ function AddModal({ orders, onClose }: { orders: { id: number; clientName: strin
   return (
     <Modal open onClose={onClose} title="Add Finance Entry">
       <form onSubmit={submit} className="space-y-4">
-        <div><label className="mb-1 block text-sm font-medium text-gray-700">Order (optional)</label><Select name="orderId" defaultValue=""><option value="">General (no order)</option>{orders.map((o) => <option key={o.id} value={o.id}>#{o.id} {o.clientName}</option>)}</Select></div>
+        <div><label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Order (optional)</label><Select name="orderId" defaultValue=""><option value="">General (no order)</option>{orders.map((o) => <option key={o.id} value={o.id}>#{o.id} {o.clientName}</option>)}</Select></div>
         <div className="grid grid-cols-2 gap-3">
-          <div><label className="mb-1 block text-sm font-medium text-gray-700">Type</label><Select name="type" defaultValue="income"><option value="income">Income</option><option value="expense">Expense</option></Select></div>
-          <div><label className="mb-1 block text-sm font-medium text-gray-700">Category</label><Input name="category" placeholder="Advance Payment, Transport\u2026" required defaultValue="Advance Payment" /></div>
+          <div><label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Type</label><Select name="type" defaultValue="income"><option value="income">Income</option><option value="expense">Expense</option></Select></div>
+          <div><label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label><Input name="category" placeholder="Advance Payment, Transport\u2026" required defaultValue="Advance Payment" /></div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div><label className="mb-1 block text-sm font-medium text-gray-700">Amount (\u20B9)</label><Input name="amount" type="number" min={0} required /></div>
-          <div><label className="mb-1 block text-sm font-medium text-gray-700">Date</label><Input name="date" type="date" required defaultValue={todayISO()} /></div>
+          <div><label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Amount (\u20B9)</label><Input name="amount" type="number" min={0} required /></div>
+          <div><label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label><Input name="date" type="date" required defaultValue={todayISO()} /></div>
         </div>
-        <div><label className="mb-1 block text-sm font-medium text-gray-700">Description</label><Input name="description" /></div>
+        <div><label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label><Input name="description" /></div>
         <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" type="button" onClick={onClose}>Cancel</Button><Button type="submit" disabled={pending}>{pending ? "Saving\u2026" : "Add Entry"}</Button></div>
       </form>
     </Modal>

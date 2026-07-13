@@ -1,10 +1,7 @@
 // src/app/api/manifest/route.ts
 import { NextResponse } from "next/server";
-import { getSetting } from "@/lib/settings";
 
 export async function GET() {
-  const logoUrl = await getSetting("logo_url");
-
   const manifest = {
     name: "Kadam Production",
     short_name: "KadamProd",

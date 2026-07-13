@@ -11,6 +11,25 @@ import { formatOrderNumber } from "@/lib/invoice-number";
 import { formatINR } from "@/lib/utils";
 import { sendEmail } from "@/lib/email";
 
+/** Escape a string for safe interpolation into HTML (prevents stored XSS). */
+function escapeHtml(s: unknown): string {
+  if (s === null || s === undefined) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** Allowed order status transitions. Anything else is rejected. */
+const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+  upcoming: ["ongoing", "completed", "cancelled"],
+  ongoing: ["completed", "cancelled"],
+  completed: ["cancelled"],
+  cancelled: [],
+};
+
 export async function createOrder(input: {
   clientName: string;
   contactPerson: string;
@@ -32,8 +51,11 @@ export async function createOrder(input: {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
 
+  if (!input.clientName || !input.clientName.trim()) throw new Error("Client name is required.");
+
   const budget = Number(input.totalBudget || 0);
   const advance = Number(input.advancePayment || 0);
+  if (budget < 0 || advance < 0) throw new Error("Amounts cannot be negative.");
 
   let orderId: number | undefined;
   try {
@@ -60,14 +82,21 @@ export async function createOrder(input: {
       .returning({ id: schema.orders.id });
 
     if (advance > 0 && order) {
-      await db.insert(schema.finance).values({
-        orderId: order.id,
-        type: "income",
-        category: "Advance Payment",
-        amount: advance,
-        date: input.eventDate || new Date().toISOString().slice(0, 10),
-        description: "Advance at order creation",
-      });
+      // H11: Wrap the advance insert in its own try/catch so a finance-insert
+      // failure does NOT roll back / orphan the already-created order. The
+      // order existing is more important than recording the advance.
+      try {
+        await db.insert(schema.finance).values({
+          orderId: order.id,
+          type: "income",
+          category: "Advance Payment",
+          amount: advance,
+          date: input.eventDate || new Date().toISOString().slice(0, 10),
+          description: "Advance at order creation",
+        });
+      } catch (advanceErr) {
+        console.error("createOrder: failed to record advance for order", order.id, advanceErr);
+      }
     }
     orderId = order?.id;
   } catch (err) {
@@ -84,6 +113,9 @@ export async function updateOrder(id: number, input: Record<string, unknown>) {
   if (!user) throw new Error("Unauthorized");
   try {
     const patch: Record<string, unknown> = {};
+    // M25: This allowlist intentionally excludes "status" — status may only be
+    // changed via updateOrderStatus(), which validates transitions. Do NOT add
+    // "status" here.
     for (const k of ["clientName", "contactPerson", "contactPhone", "contactEmail", "transportContactName", "transportContactPhone", "eventDate", "eventTime", "setupDate", "setupTime", "address", "billingAddress"]) {
       if (input[k] !== undefined) patch[k] = input[k] || null;
     }
@@ -127,15 +159,16 @@ export async function sendInvoiceEmail(orderId: number) {
   const total = Number(order.totalBudget);
   const due = Math.max(0, total - paid);
   const orderNum = formatOrderNumber(order.id, order.createdAt);
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://kadamproduction-opencode.vercel.app";
-  const invoiceUrl = `${baseUrl}/orders/${orderId}/invoice`;
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://app.kadamproduction.in";
+  // C4: link to the PUBLIC invoice route (no auth required), not the admin route.
+  const invoiceUrl = `${baseUrl}/invoice/${orderId}`;
   const html = `
     <div style="max-width:500px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
       <div style="text-align:center;padding:24px 0">
         <h2 style="margin:0;color:#1e40af">Kadam Production</h2>
-        <p style="color:#6b7280;font-size:13px">Invoice — ${orderNum}</p>
+        <p style="color:#6b7280;font-size:13px">Invoice — ${escapeHtml(orderNum)}</p>
       </div>
-      <p>Hello <strong>${order.clientName}</strong>,</p>
+      <p>Hello <strong>${escapeHtml(order.clientName)}</strong>,</p>
       <p>Thank you for choosing Kadam Production. Here is your invoice summary:</p>
       <table style="width:100%;border-collapse:collapse;margin:16px 0">
         <tr><td style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:600;background:#f9fafb">Order</td><td style="padding:8px 12px;border:1px solid #e5e7eb">${orderNum}</td></tr>
@@ -160,18 +193,51 @@ export async function updateOrderStatus(id: number, status: string, completeMode
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
 
+  // M28: Validate the status transition before applying it.
+  const [current] = await db
+    .select({ status: schema.orders.status })
+    .from(schema.orders)
+    .where(eq(schema.orders.id, id))
+    .limit(1);
+  if (!current) throw new Error("Order not found.");
+  const fromStatus = current.status;
+  const allowed = ALLOWED_TRANSITIONS[fromStatus] || [];
+  if (!allowed.includes(status)) {
+    throw new Error(`Invalid status transition from ${fromStatus} to ${status}.`);
+  }
+
   await db.update(schema.orders).set({ status: status as OrderStatus }).where(eq(schema.orders.id, id));
 
+  // Find items linked to this order via orderItems.
+  const linked = await db
+    .select({ itemId: schema.orderItems.itemId })
+    .from(schema.orderItems)
+    .where(eq(schema.orderItems.orderId, id));
+  const linkedItemIds = linked.map((l) => l.itemId);
+
   if (status === "completed" && completeMode === "automatic") {
-    const linked = await db
-      .select({ itemId: schema.orderItems.itemId })
-      .from(schema.orderItems)
-      .where(eq(schema.orderItems.orderId, id));
-    if (linked.length) {
+    // H10 (automatic): auto-return items to warehouse.
+    if (linkedItemIds.length) {
       await db
         .update(schema.items)
         .set({ status: "available", currentOrderId: null })
-        .where(inArray(schema.items.id, linked.map((l) => l.itemId)));
+        .where(inArray(schema.items.id, linkedItemIds));
+    }
+  } else if (status === "completed" && completeMode !== "automatic") {
+    // H10 (manual): unlink items from this order but leave their status as-is.
+    if (linkedItemIds.length) {
+      await db
+        .update(schema.items)
+        .set({ currentOrderId: null })
+        .where(inArray(schema.items.id, linkedItemIds));
+    }
+  } else if (status === "cancelled") {
+    // H10 (cancelled): unlink linked items (clear currentOrderId) on cancellation.
+    if (linkedItemIds.length) {
+      await db
+        .update(schema.items)
+        .set({ currentOrderId: null })
+        .where(inArray(schema.items.id, linkedItemIds));
     }
   }
 
@@ -226,6 +292,13 @@ export async function reserveItems(orderId: number, items: { itemId: number; qty
   if (!user) throw new Error("Unauthorized");
   for (const { itemId, qty } of items) {
     if (typeof qty !== 'number' || isNaN(qty) || qty <= 0) continue;
+    // H13: Verify the item exists before upserting a reservation row.
+    const [item] = await db
+      .select({ id: schema.items.id })
+      .from(schema.items)
+      .where(eq(schema.items.id, itemId))
+      .limit(1);
+    if (!item) continue;
     const existing = await db
       .select()
       .from(schema.orderItems)
@@ -251,6 +324,18 @@ export async function unreserveItem(orderId: number, itemId: number) {
 export async function markSetupDone(orderId: number) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
+  // M27: Make idempotent — if setup is already marked done, return early so we
+  // don't create duplicate notifications.
+  const [existing] = await db
+    .select({ setupDone: schema.orders.setupDone })
+    .from(schema.orders)
+    .where(eq(schema.orders.id, orderId))
+    .limit(1);
+  if (existing && existing.setupDone) {
+    revalidatePath("/my-tasks");
+    revalidatePath(`/orders/${orderId}`);
+    return;
+  }
   await db.update(schema.orders).set({ setupDone: 1 }).where(eq(schema.orders.id, orderId));
   const admins = await db
     .select({ id: schema.users.id })
