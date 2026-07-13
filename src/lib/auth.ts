@@ -13,8 +13,8 @@ const MAX_ADMIN_DEVICES = 2;
 // H1: No weak fallback — AUTH_SECRET is always required.
 function getSecret(): Uint8Array {
   const s = process.env.AUTH_SECRET;
-  if (!s) {
-    throw new Error("AUTH_SECRET is required. Set it in your environment (.env.local).");
+  if (!s || s.trim().length < 8) {
+    throw new Error("AUTH_SECRET is required and must be at least 8 characters. Current value length: " + (s ? s.length : "undefined"));
   }
   return new TextEncoder().encode(s);
 }
@@ -32,36 +32,44 @@ async function sign(user: SessionUser): Promise<string> {
   const sessionId = crypto.randomUUID();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 1000 * 60 * 60 * 24); // 1 day
-  // M1: persist session in DB for revocation. Errors propagate to the caller
-  // (login()), which returns a generic "Server error" response.
-  // Phase 6: Admin 2-device limit — revoke oldest sessions beyond the limit
-  if (user.role === "admin") {
-    const activeSessions = await db
-      .select({ id: schema.sessions.id })
-      .from(schema.sessions)
-      .where(and(
-        eq(schema.sessions.userId, user.id),
-        isNull(schema.sessions.revokedAt),
-        gte(schema.sessions.expiresAt, now),
-      ))
-      .orderBy(asc(schema.sessions.createdAt));
 
-    // L4: revoke enough sessions so that after inserting the new one, at most
-    // MAX_ADMIN_DEVICES remain.
-    const toRevokeCount = Math.max(0, activeSessions.length - (MAX_ADMIN_DEVICES - 1));
-    for (let i = 0; i < toRevokeCount; i++) {
-      await db.update(schema.sessions).set({ revokedAt: now }).where(eq(schema.sessions.id, activeSessions[i].id));
+  // M1: persist session in DB for revocation.
+  // IMPORTANT: All DB operations here are wrapped in try/catch so that a
+  // transient DB error does NOT block login. The JWT is still issued and the
+  // user can access the app. Any DB error is logged for monitoring.
+  try {
+    // Phase 6: Admin 2-device limit — revoke oldest sessions beyond the limit
+    if (user.role === "admin") {
+      const activeSessions = await db
+        .select({ id: schema.sessions.id })
+        .from(schema.sessions)
+        .where(and(
+          eq(schema.sessions.userId, user.id),
+          isNull(schema.sessions.revokedAt),
+          gte(schema.sessions.expiresAt, now),
+        ))
+        .orderBy(asc(schema.sessions.createdAt));
+
+      const toRevokeCount = Math.max(0, activeSessions.length - (MAX_ADMIN_DEVICES - 1));
+      for (let i = 0; i < toRevokeCount; i++) {
+        await db.update(schema.sessions).set({ revokedAt: now }).where(eq(schema.sessions.id, activeSessions[i].id));
+      }
     }
+
+    await db.insert(schema.sessions).values({
+      id: sessionId,
+      userId: user.id,
+      refreshToken: sessionId,
+      rotated: false,
+      expiresAt,
+      createdAt: now,
+    });
+  } catch (err) {
+    // Session DB write failed — log the full error but DO NOT block login.
+    // The JWT still works; the user just won't have a revocable DB session.
+    console.error("[auth] sign() DB error (non-blocking, login will continue):", err);
   }
 
-  await db.insert(schema.sessions).values({
-    id: sessionId,
-    userId: user.id,
-    refreshToken: sessionId,
-    rotated: false,
-    expiresAt,
-    createdAt: now,
-  });
   return new SignJWT({ ...user, sessionId })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(String(user.id))
