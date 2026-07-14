@@ -272,7 +272,13 @@ export async function login(
     } catch (err2) {
       console.error("[auth] users raw SQL fallback failed:", err2);
       const detail = err2 instanceof Error ? err2.message : String(err2);
-      return { ok: false, error: `Server error (DB): ${detail.slice(0, 140)}` };
+      if (/401|unauthorized|auth/i.test(detail)) {
+        return {
+          ok: false,
+          error: "Database connection unauthorized. Update TURSO_AUTH_TOKEN in Vercel and redeploy.",
+        };
+      }
+      return { ok: false, error: "Server error (DB). Please try again." };
     }
   }
 
