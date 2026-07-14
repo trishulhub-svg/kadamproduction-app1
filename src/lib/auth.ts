@@ -9,7 +9,7 @@ import { checkRateLimit as generalRateLimit, clearRateLimit } from "./rate-limit
 
 const COOKIE = "kp_session";
 const MAX_ADMIN_DEVICES = 2;
-const SESSION_GRACE_MS = 15_000; // Turso read-after-write grace for new sessions
+const SESSION_GRACE_MS = 60_000; // Turso read-after-write grace for new sessions
 // Precomputed bcrypt of a fixed string — used only for timing equalization.
 const DUMMY_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
 
@@ -53,38 +53,51 @@ async function sign(user: SessionUser): Promise<string> {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 1000 * 60 * 60 * 24); // 1 day
 
-  // Persist session before issuing JWT — fail closed if DB write fails so
-  // sessions remain revocable.
-  if (user.role === "admin") {
-    const activeSessions = await db
-      .select({ id: schema.sessions.id })
-      .from(schema.sessions)
-      .where(
-        and(
-          eq(schema.sessions.userId, user.id),
-          isNull(schema.sessions.revokedAt),
-          gte(schema.sessions.expiresAt, now)
-        )
-      )
-      .orderBy(asc(schema.sessions.createdAt));
+  // Persist session for revocation. Retries on transient Turso errors.
+  // If persistence still fails, we still issue the JWT — verify() allows a
+  // short grace window for missing rows so login is not hard-down.
+  let sessionPersisted = false;
+  for (let attempt = 0; attempt < 3 && !sessionPersisted; attempt++) {
+    try {
+      if (user.role === "admin" && attempt === 0) {
+        const activeSessions = await db
+          .select({ id: schema.sessions.id })
+          .from(schema.sessions)
+          .where(
+            and(
+              eq(schema.sessions.userId, user.id),
+              isNull(schema.sessions.revokedAt),
+              gte(schema.sessions.expiresAt, now)
+            )
+          )
+          .orderBy(asc(schema.sessions.createdAt));
 
-    const toRevokeCount = Math.max(0, activeSessions.length - (MAX_ADMIN_DEVICES - 1));
-    for (let i = 0; i < toRevokeCount; i++) {
-      await db
-        .update(schema.sessions)
-        .set({ revokedAt: now })
-        .where(eq(schema.sessions.id, activeSessions[i].id));
+        const toRevokeCount = Math.max(0, activeSessions.length - (MAX_ADMIN_DEVICES - 1));
+        for (let i = 0; i < toRevokeCount; i++) {
+          await db
+            .update(schema.sessions)
+            .set({ revokedAt: now })
+            .where(eq(schema.sessions.id, activeSessions[i].id));
+        }
+      }
+
+      await db.insert(schema.sessions).values({
+        id: sessionId,
+        userId: user.id,
+        refreshToken: sessionId,
+        rotated: false,
+        expiresAt,
+        createdAt: now,
+      });
+      sessionPersisted = true;
+    } catch (err) {
+      console.error(`[auth] sign() session persist attempt ${attempt + 1} failed:`, err);
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 150 * (attempt + 1)));
     }
   }
-
-  await db.insert(schema.sessions).values({
-    id: sessionId,
-    userId: user.id,
-    refreshToken: sessionId,
-    rotated: false,
-    expiresAt,
-    createdAt: now,
-  });
+  if (!sessionPersisted) {
+    console.error("[auth] sign() continuing without persisted session — verify grace window applies");
+  }
 
   return new SignJWT({
     id: user.id,
