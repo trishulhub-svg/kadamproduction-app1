@@ -98,6 +98,8 @@ export async function createCategoryItem(input: { name: string; subcategoryId: n
   const [sub] = await db.select({ categoryId: schema.subcategories.categoryId }).from(schema.subcategories).where(eq(schema.subcategories.id, input.subcategoryId)).limit(1);
   if (!sub) throw new Error("Sub-category not found.");
   const name = input.name.trim().toUpperCase();
+  const qty = Number(input.quantity);
+  if (!Number.isFinite(qty) || qty < 0) throw new Error("Quantity must be a non-negative number.");
   // L15: retry the insert on barcode collisions, regenerating the barcode each attempt.
   let lastErr: unknown;
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -107,7 +109,7 @@ export async function createCategoryItem(input: { name: string; subcategoryId: n
         categoryId: sub.categoryId,
         subcategoryId: input.subcategoryId,
         description: input.description?.trim() || null,
-        quantity: Number(input.quantity) || 0,
+        quantity: Math.floor(qty),
         barcode: generateBarcode(),
         status: "available",
       });

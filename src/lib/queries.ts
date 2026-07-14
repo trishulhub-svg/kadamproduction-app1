@@ -9,6 +9,7 @@ export async function committedQty(itemId: number, onDate?: string): Promise<num
   const conditions = [
     eq(schema.orderItems.itemId, itemId),
     inArray(schema.orders.status, activeStatuses),
+    isNull(schema.orders.deletedAt),
   ];
   if (onDate) conditions.push(eq(schema.orders.eventDate, onDate));
 
@@ -44,7 +45,7 @@ export async function listItems(opts?: { categoryId?: number; subcategoryId?: nu
   if (opts?.search) conds.push(sql`upper(${schema.items.name}) like ${"%" + opts.search.toUpperCase() + "%"}`);
 
   const activeStatuses: OrderStatus[] = ["upcoming", "ongoing"];
-  const committedConds = [inArray(schema.orders.status, activeStatuses)];
+  const committedConds = [inArray(schema.orders.status, activeStatuses), isNull(schema.orders.deletedAt)];
   if (opts?.onDate) committedConds.push(eq(schema.orders.eventDate, opts.onDate));
 
   // Single query with LEFT JOINs to get committed quantities.

@@ -1,4 +1,6 @@
 // src/components/ui.tsx — minimal primitives (shadcn-style, no external dep)
+"use client";
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 
@@ -66,11 +68,6 @@ export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<H
 }
 
 export function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  // L16: native <option> dropdown list uses browser-default styling. We rely on
-  // globals.css setting `color-scheme: dark` on `.dark body` (and `light` on
-  // :root), which makes the OS-rendered option list match the active theme
-  // (dark bg + light text in dark mode). `glass-input` does not override
-  // color-scheme, so no extra handling is needed here.
   return (
     <select
       className={cn(
@@ -115,13 +112,51 @@ export function Modal({
   children: React.ReactNode;
   className?: string;
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    // Focus first focusable control in the panel
+    const t = window.setTimeout(() => {
+      const el = panelRef.current?.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      el?.focus();
+    }, 0);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+      window.clearTimeout(t);
+    };
+  }, [open, onClose]);
+
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/30 p-4 backdrop-blur-sm sm:p-8">
-      <div className={cn("glass relative w-full max-w-lg rounded-2xl my-8", className)}>
+    <div
+      className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/30 p-4 backdrop-blur-sm sm:p-8"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      onClick={onClose}
+    >
+      <div
+        ref={panelRef}
+        className={cn("glass relative my-8 w-full max-w-lg rounded-2xl", className)}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-white/10">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-          <button onClick={onClose} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="Close">
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-white/10 dark:hover:text-gray-200"
+            aria-label="Close"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -134,8 +169,8 @@ export function Modal({
 export function EmptyState({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="glass-card rounded-xl py-12 text-center">
-      <p className="text-sm font-semibold text-gray-600">{title}</p>
-      {hint && <p className="mt-1 text-xs text-gray-400">{hint}</p>}
+      <p className="text-sm font-semibold text-gray-600 dark:text-gray-200">{title}</p>
+      {hint && <p className="mt-1 text-xs text-gray-400 dark:text-gray-400">{hint}</p>}
     </div>
   );
 }

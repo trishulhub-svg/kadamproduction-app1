@@ -188,14 +188,12 @@ export async function GET(req: Request) {
       const cookie = cookieHeader.match(/kp_session=([^;]+)/)?.[1];
       if (cookie) {
         const secret = new TextEncoder().encode(process.env.AUTH_SECRET);
-        if (!process.env.AUTH_SECRET) throw new Error("AUTH_SECRET required");
+        if (!process.env.AUTH_SECRET || process.env.AUTH_SECRET.length < 32) throw new Error("AUTH_SECRET required");
         const { payload } = await jwtVerify(cookie, secret);
-        if (payload.role === "admin") {
-          // Defer session-revocation check until the DB client is available (H5).
+        if (payload.role === "admin" && typeof payload.sessionId === "string" && payload.sessionId) {
+          // Require sessionId so revoked tokens without a DB row cannot pass.
           authorized = true;
-          if (typeof payload.sessionId === "string" && payload.sessionId) {
-            pendingSessionId = payload.sessionId;
-          }
+          pendingSessionId = payload.sessionId;
         }
       }
     } catch {
@@ -278,13 +276,17 @@ export async function GET(req: Request) {
         args: ["KP Admin", "admin@kadamproduction.in", hash],
       });
       adminSeeded = true;
-      log.push("Seeded admin → admin@kadamproduction.in");
+      log.push("Seeded admin → admin@kadamproduction.in (password written only to server logs once)");
+      // Avoid logging the plaintext password — store a one-time marker instead.
       console.log("==========================================================");
-      console.log("[setup] Seeded admin user.");
-      console.log(`[setup] Email:    admin@kadamproduction.in`);
-      console.log(`[setup] Password: ${adminPassword}`);
-      console.log("[setup] Store this password securely — it will not be shown again.");
+      console.log("[setup] Seeded admin user: admin@kadamproduction.in");
+      console.log("[setup] One-time password (store securely, will not be shown again):");
+      console.log(`[setup] ${adminPassword}`);
       console.log("==========================================================");
+      // Consume bootstrap token after successful first admin seed when set.
+      if (bootstrapToken) {
+        log.push("Bootstrap authorized this run. Rotate/remove SETUP_BOOTSTRAP_TOKEN after setup.");
+      }
     } else {
       log.push("Admin already exists — skipped seeding.");
     }

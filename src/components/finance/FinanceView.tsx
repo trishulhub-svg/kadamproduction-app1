@@ -86,7 +86,7 @@ export function FinanceView({ summary, transactions, orders, startDate, endDate 
         <SummaryCard icon={TrendingUp} label="Total Income" value={formatINR(summary.totalIncome)} bg="from-gray-800/20 to-gray-900/10 border-gray-200/40 dark:border-gray-700/40 text-gray-900 dark:text-gray-100" visible={amountsVisible} active={typeFilter === "income"} onClick={() => setParam("type", typeFilter === "income" ? "" : "income")} />
         <SummaryCard icon={TrendingDown} label="Total Expenses" value={formatINR(summary.totalExpenses)} bg="from-red-500/20 to-red-600/10 border-red-200/40 dark:border-red-500/20 text-red-700 dark:text-red-300" visible={amountsVisible} active={typeFilter === "expense"} onClick={() => setParam("type", typeFilter === "expense" ? "" : "expense")} />
         <SummaryCard icon={Wallet} label="Total Due" value={formatINR(summary.totalDue)} bg="from-gray-800/20 to-gray-900/10 border-gray-200/40 dark:border-gray-700/40 text-gray-900 dark:text-gray-100" visible={amountsVisible} active={typeFilter === "due"} onClick={() => setParam("type", typeFilter === "due" ? "" : "due")} />
-        <SummaryCard icon={IndianRupee} label="Net Profit" value={formatINR(summary.netProfit)} bg="from-gray-800/20 to-gray-900/10 border-gray-200/40 dark:border-gray-700/40 text-gray-900 dark:text-gray-100" visible={amountsVisible} active={false} onClick={() => {}} />
+        <SummaryCard icon={IndianRupee} label="Net Profit" value={formatINR(summary.netProfit)} bg="from-gray-800/20 to-gray-900/10 border-gray-200/40 dark:border-gray-700/40 text-gray-900 dark:text-gray-100" visible={amountsVisible} />
       </div>
 
       {/* Filters */}
@@ -184,15 +184,22 @@ export function FinanceView({ summary, transactions, orders, startDate, endDate 
 }
 
 function SummaryCard({ icon: Icon, label, value, bg, visible, active, onClick }: {
-  icon: typeof TrendingUp; label: string; value: string; bg: string; visible: boolean; active: boolean; onClick: () => void;
+  icon: typeof TrendingUp; label: string; value: string; bg: string; visible: boolean; active?: boolean; onClick?: () => void;
 }) {
-  return (
-    <button onClick={onClick} className={`glass bg-gradient-to-br ${bg} flex items-center gap-3 rounded-xl p-4 shadow-sm text-left transition-all hover:shadow-md hover:-translate-y-0.5 ${active ? "ring-2 ring-gray-900 dark:ring-gray-100" : ""}`}>
+  const className = `glass bg-gradient-to-br ${bg} flex items-center gap-3 rounded-xl p-4 shadow-sm text-left transition-all ${onClick ? "hover:shadow-md hover:-translate-y-0.5 cursor-pointer" : "cursor-default"} ${active ? "ring-2 ring-gray-900 dark:ring-gray-100" : ""}`;
+  const body = (
+    <>
       <Icon className="h-8 w-8 opacity-80 shrink-0" />
       <div className="min-w-0">
         <p className="text-xs opacity-80 truncate">{label}</p>
         <p className={`text-xl font-bold ${visible ? "" : "blur-sm select-none"}`}>{value}</p>
       </div>
+    </>
+  );
+  if (!onClick) return <div className={className}>{body}</div>;
+  return (
+    <button type="button" onClick={onClick} className={className}>
+      {body}
     </button>
   );
 }

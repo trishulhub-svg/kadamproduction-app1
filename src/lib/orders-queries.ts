@@ -73,7 +73,12 @@ export async function statusCounts() {
 
 /** Full order detail for the Manage page — OPTIMIZED: single batch for committed quantities. */
 export async function getOrderDetail(orderId: number) {
-  const order = await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).limit(1).then((r) => r[0]);
+  const order = await db
+    .select()
+    .from(schema.orders)
+    .where(and(eq(schema.orders.id, orderId), isNull(schema.orders.deletedAt)))
+    .limit(1)
+    .then((r) => r[0]);
   if (!order) return null;
 
   const [orderItems, assignments, transactions, allItems, employees, subcategories, committedRows, categories, teams, teamMemberRows] = await Promise.all([
@@ -94,14 +99,40 @@ export async function getOrderDetail(orderId: number) {
       .from(schema.orderAssignments)
       .innerJoin(schema.users, eq(schema.orderAssignments.userId, schema.users.id))
       .where(eq(schema.orderAssignments.orderId, orderId)),
-    db.select().from(schema.finance).where(eq(schema.finance.orderId, orderId)),
     db
-      .select({ id: schema.items.id, name: schema.items.name, categoryId: schema.items.categoryId, subcategoryId: schema.items.subcategoryId, quantity: schema.items.quantity, status: schema.items.status, subcategoryName: schema.subcategories.name })
+      .select()
+      .from(schema.finance)
+      .where(and(eq(schema.finance.orderId, orderId), isNull(schema.finance.deletedAt))),
+    db
+      .select({
+        id: schema.items.id,
+        name: schema.items.name,
+        categoryId: schema.items.categoryId,
+        subcategoryId: schema.items.subcategoryId,
+        quantity: schema.items.quantity,
+        status: schema.items.status,
+        subcategoryName: schema.subcategories.name,
+      })
       .from(schema.items)
       .leftJoin(schema.subcategories, eq(schema.items.subcategoryId, schema.subcategories.id))
       .where(and(isNull(schema.items.deletedAt), inArray(schema.items.status, ["available", "busy"]))),
-    db.select({ id: schema.users.id, name: schema.users.name }).from(schema.users).where(and(eq(schema.users.role, "employee"), isNull(schema.users.deletedAt))),
-    db.select({ id: schema.subcategories.id, name: schema.subcategories.name, categoryId: schema.subcategories.categoryId }).from(schema.subcategories),
+    db
+      .select({ id: schema.users.id, name: schema.users.name })
+      .from(schema.users)
+      .where(
+        and(
+          eq(schema.users.role, "employee"),
+          eq(schema.users.active, true),
+          isNull(schema.users.deletedAt)
+        )
+      ),
+    db
+      .select({
+        id: schema.subcategories.id,
+        name: schema.subcategories.name,
+        categoryId: schema.subcategories.categoryId,
+      })
+      .from(schema.subcategories),
     db
       .select({
         itemId: schema.orderItems.itemId,
@@ -110,16 +141,30 @@ export async function getOrderDetail(orderId: number) {
       .from(schema.orderItems)
       .innerJoin(schema.orders, eq(schema.orderItems.orderId, schema.orders.id))
       .innerJoin(schema.items, eq(schema.orderItems.itemId, schema.items.id))
-      .where(and(
-        inArray(schema.orders.status, ["upcoming", "ongoing"]),
-        sql`${schema.orderItems.orderId} <> ${orderId}`,
-        isNull(schema.items.deletedAt),
-        inArray(schema.items.status, ["available", "busy"]),
-      ))
+      .where(
+        and(
+          inArray(schema.orders.status, ["upcoming", "ongoing"]),
+          isNull(schema.orders.deletedAt),
+          sql`${schema.orderItems.orderId} <> ${orderId}`,
+          isNull(schema.items.deletedAt),
+          inArray(schema.items.status, ["available", "busy"])
+        )
+      )
       .groupBy(schema.orderItems.itemId),
     db.select({ id: schema.categories.id, name: schema.categories.name }).from(schema.categories),
-    db.select({ id: schema.teams.id, name: schema.teams.name, description: schema.teams.description }).from(schema.teams).where(isNull(schema.teams.deletedAt)),
-    db.select({ teamId: schema.teamMembers.teamId, userId: schema.teamMembers.userId, name: schema.users.name }).from(schema.teamMembers).innerJoin(schema.users, eq(schema.teamMembers.userId, schema.users.id)),
+    db
+      .select({ id: schema.teams.id, name: schema.teams.name, description: schema.teams.description })
+      .from(schema.teams)
+      .where(isNull(schema.teams.deletedAt)),
+    db
+      .select({
+        teamId: schema.teamMembers.teamId,
+        userId: schema.teamMembers.userId,
+        name: schema.users.name,
+      })
+      .from(schema.teamMembers)
+      .innerJoin(schema.users, eq(schema.teamMembers.userId, schema.users.id))
+      .where(and(eq(schema.users.active, true), isNull(schema.users.deletedAt))),
   ]);
 
   const committedMap = Object.fromEntries(committedRows.map((r) => [r.itemId, Number(r.committed)]));
@@ -135,5 +180,17 @@ export async function getOrderDetail(orderId: number) {
     members: teamMemberRows.filter((m) => m.teamId === t.id).map((m) => ({ userId: m.userId, name: m.name })),
   }));
 
-  return { order, orderItems, assignments, transactions, allItems, employees, subcategories, itemAvail, paid, categories, teams: teamsWithMembers };
+  return {
+    order,
+    orderItems,
+    assignments,
+    transactions,
+    allItems,
+    employees,
+    subcategories,
+    itemAvail,
+    paid,
+    categories,
+    teams: teamsWithMembers,
+  };
 }

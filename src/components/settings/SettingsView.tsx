@@ -27,16 +27,33 @@ function resizeImage(file: File, maxDim: number): Promise<string> {
   });
 }
 
-type SmtpData = { host: string; port: string; user: string; pass: string; from: string };
+type SmtpData = { host: string; port: string; user: string; pass: string; from: string; passConfigured?: boolean };
 type GstData = { number: string; percentage: number };
 
-export function SettingsView({ logoUrl, scanEnabled, smtp, gst }: { logoUrl: string | null; scanEnabled: boolean; smtp: SmtpData; gst: GstData }) {
+export function SettingsView({
+  logoUrl,
+  scanEnabled,
+  smtp,
+  gst,
+}: {
+  logoUrl: string | null;
+  scanEnabled: boolean;
+  smtp: { host: string; port: string; user: string; from: string; passConfigured?: boolean; pass?: string };
+  gst: GstData;
+}) {
   const [preview, setPreview] = useState<string | null>(logoUrl);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scanOn, setScanOn] = useState(scanEnabled);
 
-  const [smtpData, setSmtpData] = useState<SmtpData>(smtp);
+  const [smtpData, setSmtpData] = useState<SmtpData>({
+    host: smtp.host,
+    port: smtp.port,
+    user: smtp.user,
+    pass: "",
+    from: smtp.from,
+    passConfigured: smtp.passConfigured,
+  });
   const [smtpPending, setSmtpPending] = useState(false);
   const [smtpMsg, setSmtpMsg] = useState<string | null>(null);
   const [testEmail, setTestEmail] = useState("");
@@ -73,6 +90,7 @@ export function SettingsView({ logoUrl, scanEnabled, smtp, gst }: { logoUrl: str
     setSmtpMsg(null);
     try {
       await saveSmtpSettings(smtpData);
+      setSmtpData((s) => ({ ...s, pass: "", passConfigured: s.passConfigured || Boolean(s.pass.trim()) }));
       setSmtpMsg("SMTP settings saved.");
     } catch (err) {
       setSmtpMsg(`Error: ${(err as Error).message}`);
@@ -100,10 +118,10 @@ export function SettingsView({ logoUrl, scanEnabled, smtp, gst }: { logoUrl: str
 
   return (
     <div>
-      <h1 className="mb-5 text-2xl font-bold text-gray-900">Admin Settings</h1>
+      <h1 className="mb-5 text-2xl font-bold text-gray-900 dark:text-gray-100">Admin Settings</h1>
 
       <Card className="max-w-lg p-5">
-        <h3 className="mb-1 text-sm font-semibold text-gray-700">Company Logo</h3>
+        <h3 className="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-200">Company Logo</h3>
         <p className="mb-4 text-xs text-gray-500">Shown in sidebar, invoices, PWA. Use a square image under ~220KB.</p>
         <div className="mb-4 flex items-center gap-4">
           <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
@@ -114,9 +132,9 @@ export function SettingsView({ logoUrl, scanEnabled, smtp, gst }: { logoUrl: str
             )}
           </div>
           <div className="space-y-2">
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-kp-primary px-4 py-2 text-sm font-medium text-white hover:bg-gray-700">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-kp-primary px-4 py-2 text-sm font-medium text-white hover:bg-[var(--accent-hover)]">
               <Upload className="h-4 w-4" /> {pending ? "Uploading…" : "Upload Logo"}
-              <input type="file" accept="image/*" onChange={onFile} className="hidden" disabled={pending} />
+              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={onFile} className="hidden" disabled={pending} />
             </label>
             {preview && (
               <button onClick={remove} disabled={pending} className="flex items-center gap-1 text-sm text-kp-danger hover:underline disabled:opacity-50">
@@ -135,7 +153,7 @@ export function SettingsView({ logoUrl, scanEnabled, smtp, gst }: { logoUrl: str
               <ScanLine className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-gray-700">Scan Item Visibility</h3>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Scan Item Visibility</h3>
               <p className="text-xs text-gray-500">Toggle Scan for all employee dashboards.</p>
             </div>
           </div>
@@ -155,7 +173,7 @@ export function SettingsView({ logoUrl, scanEnabled, smtp, gst }: { logoUrl: str
             <Receipt className="h-5 w-5 text-gray-600 dark:text-gray-400" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-700">GST Settings</h3>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">GST Settings</h3>
             <p className="text-xs text-gray-500">GST number and tax rate for invoices.</p>
           </div>
         </div>
@@ -177,7 +195,7 @@ export function SettingsView({ logoUrl, scanEnabled, smtp, gst }: { logoUrl: str
             <Mail className="h-5 w-5 text-gray-600 dark:text-gray-400" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-700">SMTP / Email Settings</h3>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">SMTP / Email Settings</h3>
             <p className="text-xs text-gray-500">Configure outgoing email for notifications, welcome emails, etc.</p>
           </div>
         </div>
@@ -187,7 +205,16 @@ export function SettingsView({ logoUrl, scanEnabled, smtp, gst }: { logoUrl: str
             <div><Label>Port</Label><Input placeholder="587" value={smtpData.port} onChange={(e) => setSmtpData((s) => ({ ...s, port: e.target.value }))} /></div>
           </div>
           <div><Label>SMTP Username</Label><Input placeholder="user@example.com" value={smtpData.user} onChange={(e) => setSmtpData((s) => ({ ...s, user: e.target.value }))} /></div>
-          <div><Label>SMTP Password</Label><Input type="password" placeholder="••••••••" value={smtpData.pass} onChange={(e) => setSmtpData((s) => ({ ...s, pass: e.target.value }))} /></div>
+          <div>
+            <Label>SMTP Password</Label>
+            <Input
+              type="password"
+              placeholder={smtpData.passConfigured ? "•••••••• (leave blank to keep)" : "••••••••"}
+              value={smtpData.pass}
+              onChange={(e) => setSmtpData((s) => ({ ...s, pass: e.target.value }))}
+              autoComplete="new-password"
+            />
+          </div>
           <div><Label>From Email</Label><Input placeholder="noreply@kadamproduction.in" value={smtpData.from} onChange={(e) => setSmtpData((s) => ({ ...s, from: e.target.value }))} /></div>
           <div className="flex items-center gap-3 pt-1">
             <Button type="submit" disabled={smtpPending}>{smtpPending ? "Saving…" : "Save SMTP"}</Button>
@@ -210,10 +237,12 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: b
   return (
     <button
       type="button"
+      role="switch"
+      aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${checked ? "bg-kp-success" : "bg-gray-300"}`}
+      className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${checked ? "bg-kp-success" : "bg-gray-300 dark:bg-gray-600"}`}
     >
-      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition dark:bg-gray-300 ${checked ? "translate-x-6" : "translate-x-1"}`} />
+      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${checked ? "translate-x-6" : "translate-x-1"}`} />
     </button>
   );
 }

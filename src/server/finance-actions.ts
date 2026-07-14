@@ -12,6 +12,14 @@ export async function createTransaction(input: { orderId?: number; type: "income
   if (isNaN(amt) || amt <= 0) throw new Error("Amount must be a positive number.");
   if (input.type !== "income" && input.type !== "expense") throw new Error("Invalid transaction type.");
   if (!input.date) throw new Error("Date is required.");
+  if (input.orderId) {
+    const [order] = await db
+      .select({ id: schema.orders.id })
+      .from(schema.orders)
+      .where(and(eq(schema.orders.id, input.orderId), isNull(schema.orders.deletedAt)))
+      .limit(1);
+    if (!order) throw new Error("Order not found.");
+  }
   await db.insert(schema.finance).values({
     orderId: input.orderId || null,
     type: input.type,
