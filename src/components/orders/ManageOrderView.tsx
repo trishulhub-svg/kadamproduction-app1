@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button, Input, Label, Select, Modal, Card } from "@/components/ui";
 import { StatusBadge } from "@/components/StatusBadge";
-import { EVENT_CATEGORIES, ORDER_STATUS } from "@/drizzle/schema";
+import { EVENT_CATEGORIES } from "@/drizzle/schema";
 import { updateOrderStatus, saveAssignments, reserveItems, unreserveItem, updateOrder } from "@/server/order-actions";
 import { formatINR, formatDateDMY } from "@/lib/utils";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
@@ -146,8 +146,13 @@ function WorkforceSection({ orderId, assigned, employees, teams }: { orderId: nu
 
   async function save() {
     setPending(true);
-    await saveAssignments(orderId, sel);
-    setPending(false);
+    try {
+      await saveAssignments(orderId, sel);
+    } catch (err) {
+      alert((err as Error).message || "Failed to save assignments.");
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -318,9 +323,14 @@ function InventorySection({
     const payload = draftEntries.map(([itemId, qty]) => ({ itemId: Number(itemId), qty }));
     if (!payload.length) return;
     setPending(true);
-    await reserveItems(orderId, payload);
-    setDraft({});
-    setPending(false);
+    try {
+      await reserveItems(orderId, payload);
+      setDraft({});
+    } catch (err) {
+      alert((err as Error).message || "Failed to reserve items.");
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -452,7 +462,15 @@ function UnreserveBtn({ orderId, itemId }: { orderId: number; itemId: number }) 
       size="sm"
       variant="ghost"
       disabled={pending}
-      onClick={async () => { setPending(true); await unreserveItem(orderId, itemId); }}
+      onClick={async () => {
+        setPending(true);
+        try {
+          await unreserveItem(orderId, itemId);
+        } catch (err) {
+          alert((err as Error).message || "Failed to remove item.");
+          setPending(false);
+        }
+      }}
     >
       {pending ? "…" : "Remove"}
     </Button>
@@ -530,7 +548,14 @@ function EditOrderModal({ order, onClose }: { order: Detail["order"]; onClose: (
 }
 
 function ChangeStatusModal({ orderId, current, onClose }: { orderId: number; current: string; onClose: () => void }) {
-  const [status, setStatus] = useState(current);
+  const ALLOWED: Record<string, string[]> = {
+    upcoming: ["ongoing", "completed", "cancelled"],
+    ongoing: ["completed", "cancelled"],
+    completed: ["cancelled"],
+    cancelled: [],
+  };
+  const nextOptions = ALLOWED[current] || [];
+  const [status, setStatus] = useState(nextOptions[0] || current);
   const [pending, setPending] = useState(false);
   const [mode, setMode] = useState<"automatic" | "manual" | null>(null);
 
@@ -539,8 +564,14 @@ function ChangeStatusModal({ orderId, current, onClose }: { orderId: number; cur
   async function submit() {
     if (completing && !mode) { alert("Choose how inventory returns to the warehouse."); return; }
     setPending(true);
-    await updateOrderStatus(orderId, status, mode || undefined);
-    onClose();
+    try {
+      await updateOrderStatus(orderId, status, mode || undefined);
+      onClose();
+    } catch (err) {
+      alert((err as Error).message || "Failed to update status.");
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -549,26 +580,28 @@ function ChangeStatusModal({ orderId, current, onClose }: { orderId: number; cur
         <div>
           <Label>New Status</Label>
           <Select value={status} onChange={(e) => { setStatus(e.target.value); setMode(null); }}>
-            {ORDER_STATUS.map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
+            {nextOptions.map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
           </Select>
+          {!nextOptions.length && (
+            <p className="mt-2 text-xs text-gray-500">No further status transitions are available.</p>
+          )}
         </div>
 
-        {/* Improvement #8b — completion popup (manual vs automatic return) */}
         {completing && (
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
             <p className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
               Take inventory back to warehouse?
             </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <ModeCard active={mode === "automatic"} onClick={() => setMode("automatic")} title="Automatic" desc="Items return via scanner in the system (stock auto-updates)." />
-              <ModeCard active={mode === "manual"} onClick={() => setMode("manual")} title="Manual" desc="You will return items manually to warehouse stock." />
+              <ModeCard active={mode === "automatic"} onClick={() => setMode("automatic")} title="Automatic" desc="Immediately mark reserved/checked-out items as available in stock." />
+              <ModeCard active={mode === "manual"} onClick={() => setMode("manual")} title="Manual" desc="Keep items checked out — return them later via the Scan Item page." />
             </div>
           </div>
         )}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
-          <Button onClick={submit} disabled={pending}>{pending ? "Updating…" : "Update Status"}</Button>
+          <Button onClick={submit} disabled={pending || !nextOptions.length}>{pending ? "Updating…" : "Update Status"}</Button>
         </div>
       </div>
     </Modal>

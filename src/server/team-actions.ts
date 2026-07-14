@@ -28,7 +28,18 @@ export async function addMember(teamId: number, userId: number) {
   if (!user) throw new Error("Unauthorized");
   const [team] = await db.select({ id: schema.teams.id, name: schema.teams.name }).from(schema.teams).where(and(eq(schema.teams.id, teamId), isNull(schema.teams.deletedAt))).limit(1);
   if (!team) throw new Error("Team not found.");
-  const [emp] = await db.select({ id: schema.users.id }).from(schema.users).where(and(eq(schema.users.id, userId), isNull(schema.users.deletedAt))).limit(1);
+  const [emp] = await db
+    .select({ id: schema.users.id })
+    .from(schema.users)
+    .where(
+      and(
+        eq(schema.users.id, userId),
+        eq(schema.users.role, "employee"),
+        eq(schema.users.active, true),
+        isNull(schema.users.deletedAt)
+      )
+    )
+    .limit(1);
   if (!emp) throw new Error("Employee not found.");
   await db.insert(schema.teamMembers).values({ teamId, userId }).onConflictDoNothing();
   await dispatchNotification({

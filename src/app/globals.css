@@ -147,13 +147,25 @@ body {
 }
 
 @layer utilities {
-  /* NOTE: The previous block here indiscriminately overrode ALL
-     `.dark .text-gray-*` / `.dark .bg-gray-*` / `.dark .border-gray-*`
-     utilities with hand-picked hex values (e.g. `.dark .text-gray-300
-     { color:#334155 }`), which collided with Tailwind's own `dark:`
-     variant and made text, links, and highlights invisible everywhere
-     (issues C2, C3, H23, H24, H25, H26, L14, L24). It has been removed
-     so Tailwind's built-in dark palette works as intended. */
+  /*
+    Light-mode-only grey text/chrome used across list pages (without dark:
+    variants) becomes illegible on --bg #05070a. Remap ONLY near-black text
+    (700–900) and light chrome surfaces (50/100) — never light text shades
+    (100–400), which previously caused invisible-on-dark bugs when remapped.
+  */
+  .dark .text-gray-900 { color: #f1f5f9; }
+  .dark .text-gray-800 { color: #e2e8f0; }
+  .dark .text-gray-700 { color: #cbd5e1; }
+  .dark .bg-gray-50 { background-color: rgba(255, 255, 255, 0.04); }
+  .dark .bg-white { background-color: rgba(18, 22, 32, 0.6); }
+  .dark .hover\:bg-gray-50:hover { background-color: rgba(255, 255, 255, 0.06); }
+  .dark .border-gray-50 { border-color: rgba(255, 255, 255, 0.06); }
+  .dark .border-gray-100 { border-color: rgba(255, 255, 255, 0.08); }
+  .dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+  .dark .bg-red-50 { background-color: rgba(127, 29, 29, 0.35); }
+  .dark .bg-emerald-50 { background-color: rgba(6, 78, 59, 0.35); }
 }
 .dark body { color-scheme: dark; }
 :root { color-scheme: light; }

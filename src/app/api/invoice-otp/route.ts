@@ -24,12 +24,14 @@ export async function POST(req: NextRequest) {
     const { action, orderId, email, otp } = await req.json();
     if (!orderId || !email) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
 
+    const normalizedEmail = String(email).toLowerCase().trim();
     const order = await db.select().from(schema.orders).where(eq(schema.orders.id, Number(orderId))).limit(1).then((r) => r[0]);
-    if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    // Generic error — avoid order-existence / email-match oracles.
+    if (!order) return NextResponse.json({ error: "Unable to send OTP for this request." }, { status: 400 });
 
     const orderEmail = (order.contactEmail ?? "").toLowerCase().trim();
-    if (email.toLowerCase().trim() !== orderEmail) {
-      return NextResponse.json({ error: "Email does not match the order record" }, { status: 403 });
+    if (normalizedEmail !== orderEmail) {
+      return NextResponse.json({ error: "Unable to send OTP for this request." }, { status: 400 });
     }
 
     if (action === "send_otp") {
@@ -43,9 +45,12 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // H28: rate-limit OTP requests per email (3 per 10 minutes).
-      const rl = await checkRateLimit(`inv_otp:${email}`, { max: 3, windowMs: 10 * 60 * 1000 });
-      if (!rl.allowed && !rl.dbError) {
+      // Rate-limit with normalized email key.
+      const rl = await checkRateLimit(`inv_otp:${normalizedEmail}`, { max: 3, windowMs: 10 * 60 * 1000 });
+      if (!rl.allowed) {
+        if (rl.dbError) {
+          return NextResponse.json({ error: "Server temporarily unavailable. Please try again." }, { status: 503 });
+        }
         return NextResponse.json(
           { error: "Too many OTP requests. Please try again later.", retryAfter: rl.retryAfter },
           { status: 429, headers: rl.retryAfter ? { "Retry-After": String(rl.retryAfter) } : {} },
@@ -64,7 +69,7 @@ export async function POST(req: NextRequest) {
 
       const otpCode = String(randomInt(100000, 1000000));
       const hashed = await bcrypt.hash(otpCode, 12);
-      const value = JSON.stringify({ otp: hashed, email, attempts: prevAttempts, createdAt: Date.now() });
+      const value = JSON.stringify({ otp: hashed, email: normalizedEmail, attempts: prevAttempts, createdAt: Date.now() });
 
       if (existing) {
         await db.update(schema.settings).set({ value }).where(eq(schema.settings.key, key));
@@ -73,13 +78,18 @@ export async function POST(req: NextRequest) {
       }
 
       const orderNum = formatOrderNumber(order.id, order.createdAt);
+      const safeName = String(order.clientName || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
       await sendEmail({
-        to: email,
+        to: normalizedEmail,
         subject: `Your OTP for Invoice ${orderNum} — Kadam Production`,
         html: `
           <div style="max-width:480px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
             <h2 style="color:#1e293b">Invoice Access — Kadam Production</h2>
-            <p>Hello <strong>${order.clientName}</strong>,</p>
+            <p>Hello <strong>${safeName}</strong>,</p>
             <p>Use the following OTP to view your invoice for order <strong>${orderNum}</strong>:</p>
             <div style="margin:20px 0;padding:16px 24px;background:#f1f5f9;border-radius:12px;text-align:center;font-size:28px;font-weight:bold;letter-spacing:6px;color:#0f172a">${otpCode}</div>
             <p style="font-size:13px;color:#64748b">This OTP expires in 10 minutes.</p>
@@ -95,9 +105,11 @@ export async function POST(req: NextRequest) {
     if (action === "verify_otp") {
       if (!otp) return NextResponse.json({ error: "OTP is required" }, { status: 400 });
 
-      // SECURITY FIX: add rate limiting to verify_otp to prevent brute force.
       const verifyRl = await checkRateLimit(`otp_verify:${orderId}`, { max: 5, windowMs: 15 * 60 * 1000 });
-      if (!verifyRl.allowed && !verifyRl.dbError) {
+      if (!verifyRl.allowed) {
+        if (verifyRl.dbError) {
+          return NextResponse.json({ error: "Server temporarily unavailable. Please try again." }, { status: 503 });
+        }
         return NextResponse.json(
           { error: "Too many verification attempts. Please try again later.", retryAfter: verifyRl.retryAfter },
           { status: 429, headers: verifyRl.retryAfter ? { "Retry-After": String(verifyRl.retryAfter) } : {} },
@@ -145,7 +157,7 @@ export async function POST(req: NextRequest) {
       res.cookies.set(COOKIE_NAME, token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        sameSite: "strict",
         path: "/",
         maxAge: 60 * 60 * 24,
       });

@@ -8,7 +8,7 @@ export default async function ScanPage() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  // Show ongoing + upcoming events. For employees, only their assigned events.
+  // Show only ongoing events (server rejects checkout to upcoming).
   if (user.role === "employee") {
     const assignedOrders = await db
       .select({ orderId: schema.orderAssignments.orderId })
@@ -19,16 +19,15 @@ export default async function ScanPage() {
       ? await db
           .select({ id: schema.orders.id, clientName: schema.orders.clientName, contactPerson: schema.orders.contactPerson, eventDate: schema.orders.eventDate })
           .from(schema.orders)
-          .where(and(inArray(schema.orders.id, orderIds), isNull(schema.orders.deletedAt), inArray(schema.orders.status, ["ongoing", "upcoming"])))
+          .where(and(inArray(schema.orders.id, orderIds), isNull(schema.orders.deletedAt), eq(schema.orders.status, "ongoing")))
       : [];
     return <ScanView ongoing={ongoing} />;
   }
 
-  // Admin sees all ongoing + upcoming
   const ongoing = await db
     .select({ id: schema.orders.id, clientName: schema.orders.clientName, contactPerson: schema.orders.contactPerson, eventDate: schema.orders.eventDate })
     .from(schema.orders)
-    .where(and(isNull(schema.orders.deletedAt), inArray(schema.orders.status, ["ongoing", "upcoming"])));
+    .where(and(isNull(schema.orders.deletedAt), eq(schema.orders.status, "ongoing")));
 
   return <ScanView ongoing={ongoing} />;
 }

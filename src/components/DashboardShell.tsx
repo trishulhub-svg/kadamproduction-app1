@@ -36,7 +36,11 @@ export function DashboardShell({
           <div className="absolute left-0 top-0 h-full">
             <Sidebar role={role} name={name} logoUrl={logoUrl} scanEnabled={scanEnabled} onLogout={logout} onNavClick={() => setOpen(false)} />
           </div>
-          <button className="absolute right-4 top-4 rounded-lg bg-white p-2 shadow dark:bg-gray-800" onClick={() => setOpen(false)}>
+          <button
+            className="absolute right-4 top-4 rounded-lg bg-white p-2 shadow dark:bg-gray-800"
+            onClick={() => setOpen(false)}
+            aria-label="Close menu"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -50,8 +54,10 @@ export function DashboardShell({
             <Menu className="h-6 w-6" />
           </button>
           <span className="flex-1 font-bold">Kadam Production</span>
-          <ThemeToggle />
-          <NotificationBell />
+          <div className="flex items-center gap-1 [&_button]:text-white [&_button]:hover:bg-white/10 [&_button]:hover:text-white">
+            <ThemeToggle />
+            <NotificationBell />
+          </div>
         </header>
         {/* Desktop top bar */}
         <header className="sticky top-0 z-[80] hidden items-center justify-end gap-3 border-b border-gray-200 bg-white/80 px-6 py-2 backdrop-blur-lg dark:border-gray-700 dark:bg-gray-900/80 lg:flex">

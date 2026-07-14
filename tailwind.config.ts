@@ -15,7 +15,8 @@ const config: Config = {
           dark: "#020617",
         },
         kp: {
-          primary: "#0f172a",
+          // Accent blue — legible in light and dark (was near-black #0f172a).
+          primary: "#2563eb",
           success: "#059669",
           warning: "#d97706",
           danger: "#dc2626",

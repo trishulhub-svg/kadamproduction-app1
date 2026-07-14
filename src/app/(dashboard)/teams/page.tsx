@@ -16,7 +16,7 @@ export default async function TeamsPage() {
     const [teams, allMembers, emps] = await Promise.all([
       db.select().from(schema.teams).where(isNull(schema.teams.deletedAt)),
       db.select().from(schema.teamMembers),
-      db.select({ id: schema.users.id, name: schema.users.name }).from(schema.users).where(and(eq(schema.users.role, "employee"), isNull(schema.users.deletedAt))),
+      db.select({ id: schema.users.id, name: schema.users.name }).from(schema.users).where(and(eq(schema.users.role, "employee"), eq(schema.users.active, true), isNull(schema.users.deletedAt))),
     ]);
     employees = emps;
     data = teams.map((t) => ({
