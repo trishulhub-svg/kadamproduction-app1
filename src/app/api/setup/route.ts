@@ -188,7 +188,7 @@ export async function GET(req: Request) {
       const cookie = cookieHeader.match(/kp_session=([^;]+)/)?.[1];
       if (cookie) {
         const secret = new TextEncoder().encode(process.env.AUTH_SECRET);
-        if (!process.env.AUTH_SECRET || process.env.AUTH_SECRET.length < 32) throw new Error("AUTH_SECRET required");
+        if (!process.env.AUTH_SECRET || process.env.AUTH_SECRET.length < 8) throw new Error("AUTH_SECRET required");
         const { payload } = await jwtVerify(cookie, secret);
         if (payload.role === "admin" && typeof payload.sessionId === "string" && payload.sessionId) {
           // Require sessionId so revoked tokens without a DB row cannot pass.

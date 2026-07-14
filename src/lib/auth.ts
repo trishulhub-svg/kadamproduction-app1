@@ -15,10 +15,15 @@ const DUMMY_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
 
 function getSecret(): Uint8Array {
   const s = process.env.AUTH_SECRET;
-  if (!s || s.trim().length < 32) {
+  if (!s || s.trim().length < 8) {
     throw new Error(
-      "AUTH_SECRET is required and must be at least 32 characters. Current value length: " +
+      "AUTH_SECRET is required and must be at least 8 characters. Current value length: " +
         (s ? s.length : "undefined")
+    );
+  }
+  if (s.trim().length < 32) {
+    console.warn(
+      "[auth] AUTH_SECRET is shorter than 32 characters. Generate a stronger secret with: openssl rand -base64 32"
     );
   }
   return new TextEncoder().encode(s);
@@ -188,11 +193,6 @@ export async function login(
   const normalized = email.toLowerCase().trim();
   const rl = await generalRateLimit(normalized, { max: 5, windowMs: 5 * 60 * 1000 });
   if (!rl.allowed) {
-    // Fail closed on limiter DB outage for auth endpoints.
-    if (rl.dbError) {
-      console.error("[auth] Rate-limit DB unavailable — blocking login for", normalized);
-      return { ok: false, error: "Server temporarily unavailable. Please try again." };
-    }
     return { ok: false, error: `Too many attempts. Try again in ${rl.retryAfter ?? 60}s.` };
   }
 
@@ -300,7 +300,6 @@ export async function sendForgotOtp(
   const normalized = email.toLowerCase().trim();
   const rl = await generalRateLimit(normalized, { max: 3, windowMs: 10 * 60 * 1000 });
   if (!rl.allowed) {
-    if (rl.dbError) return { ok: false, error: "Server temporarily unavailable. Please try again." };
     return { ok: false, error: `Too many attempts. Try again in ${rl.retryAfter ?? 60}s.` };
   }
 
