@@ -32,6 +32,13 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local dev database (libSQL/SQLite file used when no hosted Turso creds)
+local.db
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
 # uploads (admin logo + attachments)
 /public/uploads/*
 !/public/uploads/.gitkeep
