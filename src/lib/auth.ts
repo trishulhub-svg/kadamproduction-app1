@@ -209,17 +209,52 @@ export async function login(
     return { ok: false, error: `Too many attempts. Try again in ${rl.retryAfter ?? 60}s.` };
   }
 
-  let user;
+  let user: {
+    id: number;
+    name: string;
+    email: string;
+    password: string;
+    role: "admin" | "employee";
+    mustChangePwd: boolean;
+    active: boolean | null;
+  } | undefined;
   try {
     user = await db
-      .select()
+      .select({
+        id: schema.users.id,
+        name: schema.users.name,
+        email: schema.users.email,
+        password: schema.users.password,
+        role: schema.users.role,
+        mustChangePwd: schema.users.mustChangePwd,
+        active: schema.users.active,
+      })
       .from(schema.users)
       .where(and(eq(schema.users.email, normalized), isNull(schema.users.deletedAt)))
       .limit(1)
       .then((r) => r[0]);
   } catch (err) {
-    console.error("[auth] DB error fetching user:", err);
-    return { ok: false, error: "Server error. Please try again." };
+    // Fallback if `active` (or another newer column) is missing on older DBs.
+    console.error("[auth] DB error fetching user (with active) — retrying minimal columns:", err);
+    try {
+      const row = await db
+        .select({
+          id: schema.users.id,
+          name: schema.users.name,
+          email: schema.users.email,
+          password: schema.users.password,
+          role: schema.users.role,
+          mustChangePwd: schema.users.mustChangePwd,
+        })
+        .from(schema.users)
+        .where(and(eq(schema.users.email, normalized), isNull(schema.users.deletedAt)))
+        .limit(1)
+        .then((r) => r[0]);
+      user = row ? { ...row, active: true } : undefined;
+    } catch (err2) {
+      console.error("[auth] DB error fetching user:", err2);
+      return { ok: false, error: "Server error (DB). Please try again." };
+    }
   }
 
   // Always run bcrypt to avoid timing-based email enumeration.
@@ -229,7 +264,7 @@ export async function login(
     match = await bcrypt.compare(password, hash);
   } catch (err) {
     console.error("[auth] bcrypt compare error:", err);
-    return { ok: false, error: "Server error. Please try again." };
+    return { ok: false, error: "Server error (auth). Please try again." };
   }
 
   if (!user || !match) {
@@ -258,15 +293,24 @@ export async function login(
     });
   } catch (err) {
     console.error("[auth] sign token error:", err);
-    return { ok: false, error: "Server error. Please try again." };
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/AUTH_SECRET/i.test(msg)) {
+      return { ok: false, error: "Server error (secret). Please contact admin." };
+    }
+    return { ok: false, error: "Server error (token). Please try again." };
   }
-  store.set(COOKIE, token, {
-    httpOnly: true,
-    sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24,
-  });
+  try {
+    store.set(COOKIE, token, {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24,
+    });
+  } catch (err) {
+    console.error("[auth] cookie set error:", err);
+    return { ok: false, error: "Server error (cookie). Please try again." };
+  }
   return { ok: true, mustChangePwd: Boolean(user.mustChangePwd) };
 }
 
