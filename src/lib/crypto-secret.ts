@@ -6,8 +6,8 @@ const PREFIX = "enc:v1:";
 
 function keyFromSecret(): Buffer {
   const secret = process.env.AUTH_SECRET;
-  if (!secret || secret.length < 32) {
-    throw new Error("AUTH_SECRET must be at least 32 characters to encrypt secrets.");
+  if (!secret || secret.length < 8) {
+    throw new Error("AUTH_SECRET is required to encrypt secrets.");
   }
   return createHash("sha256").update(secret).digest();
 }
