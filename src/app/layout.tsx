@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { ThemeProviderWrapper } from "@/components/ThemeProviderWrapper";
+import { AgentationDev } from "@/components/AgentationDev";
 import "./globals.css";
 export const metadata: Metadata = {
   title: "Kadam Production",
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ThemeProviderWrapper>
           {children}
+          <AgentationDev />
         </ThemeProviderWrapper>
       </body>
     </html>
