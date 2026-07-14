@@ -218,6 +218,7 @@ export async function login(
     mustChangePwd: boolean;
     active: boolean | null;
   } | undefined;
+
   try {
     user = await db
       .select({
@@ -234,26 +235,44 @@ export async function login(
       .limit(1)
       .then((r) => r[0]);
   } catch (err) {
-    // Fallback if `active` (or another newer column) is missing on older DBs.
-    console.error("[auth] DB error fetching user (with active) — retrying minimal columns:", err);
+    console.error("[auth] users drizzle query failed — raw SQL fallback:", err);
     try {
-      const row = await db
-        .select({
-          id: schema.users.id,
-          name: schema.users.name,
-          email: schema.users.email,
-          password: schema.users.password,
-          role: schema.users.role,
-          mustChangePwd: schema.users.mustChangePwd,
-        })
-        .from(schema.users)
-        .where(and(eq(schema.users.email, normalized), isNull(schema.users.deletedAt)))
-        .limit(1)
-        .then((r) => r[0]);
-      user = row ? { ...row, active: true } : undefined;
+      const { createClient } = await import("@libsql/client");
+      const url = process.env.TURSO_DATABASE_URL;
+      const authToken = process.env.TURSO_AUTH_TOKEN;
+      if (!url) throw new Error("TURSO_DATABASE_URL missing");
+      const client = createClient({ url, authToken });
+
+      // Minimal columns that exist since the original PHP migration.
+      let res;
+      try {
+        res = await client.execute({
+          sql: "SELECT id, name, email, password, role, must_change_pwd FROM users WHERE lower(email) = ? AND deleted_at IS NULL LIMIT 1",
+          args: [normalized],
+        });
+      } catch {
+        res = await client.execute({
+          sql: "SELECT id, name, email, password, role, must_change_pwd FROM users WHERE lower(email) = ? LIMIT 1",
+          args: [normalized],
+        });
+      }
+
+      const row = res.rows[0] as Record<string, unknown> | undefined;
+      if (row) {
+        user = {
+          id: Number(row.id),
+          name: String(row.name),
+          email: String(row.email),
+          password: String(row.password),
+          role: String(row.role) as "admin" | "employee",
+          mustChangePwd: Boolean(row.must_change_pwd),
+          active: true,
+        };
+      }
     } catch (err2) {
-      console.error("[auth] DB error fetching user:", err2);
-      return { ok: false, error: "Server error (DB). Please try again." };
+      console.error("[auth] users raw SQL fallback failed:", err2);
+      const detail = err2 instanceof Error ? err2.message : String(err2);
+      return { ok: false, error: `Server error (DB): ${detail.slice(0, 140)}` };
     }
   }
 
