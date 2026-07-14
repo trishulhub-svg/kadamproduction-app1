@@ -269,14 +269,15 @@ export async function GET(req: Request) {
 
     // Seed admin if none exists
     const existing = await client.execute("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
-    let adminPassword: string | undefined;
+    let adminSeeded = false;
     if (existing.rows.length === 0) {
-      adminPassword = crypto.randomBytes(12).toString("base64url");
+      const adminPassword = crypto.randomBytes(12).toString("base64url");
       const hash = await bcrypt.hash(adminPassword, 12);
       await client.execute({
         sql: "INSERT INTO users (name, email, password, role, must_change_pwd) VALUES (?, ?, ?, 'admin', 1)",
         args: ["KP Admin", "admin@kadamproduction.in", hash],
       });
+      adminSeeded = true;
       log.push("Seeded admin → admin@kadamproduction.in");
       console.log("==========================================================");
       console.log("[setup] Seeded admin user.");
@@ -288,7 +289,10 @@ export async function GET(req: Request) {
       log.push("Admin already exists — skipped seeding.");
     }
 
-    return NextResponse.json({ ok: true, log, adminPassword });
+    // SECURITY FIX: do NOT return the adminPassword in the HTTP response body.
+    // The password is logged server-side only (above). The response just
+    // indicates whether a new admin was seeded.
+    return NextResponse.json({ ok: true, log, adminSeeded });
   } catch {
     return NextResponse.json({ ok: false, error: "Setup failed. Check server logs.", log }, { status: 500 });
   }

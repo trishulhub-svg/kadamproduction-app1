@@ -1,7 +1,7 @@
 // src/server/employee-actions.ts
 "use server";
 import { revalidatePath } from "next/cache";
-import { eq, isNull, and, desc } from "drizzle-orm";
+import { eq, isNull, and, desc, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { requireAdmin, hashPassword } from "@/lib/auth";
 import { dispatchNotification } from "./notification-dispatcher";
@@ -13,7 +13,7 @@ export async function createEmployee(input: { name: string; email: string; phone
   const email = input.email.toLowerCase().trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Invalid email.");
   if (input.password.length < 8) throw new Error("Password must be at least 8 characters.");
-  const exists = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, email)).limit(1);
+  const exists = await db.select({ id: schema.users.id }).from(schema.users).where(and(eq(schema.users.email, email), isNull(schema.users.deletedAt))).limit(1);
   if (exists.length) throw new Error("Email already in use.");
   const result = await db.insert(schema.users).values({
     name: input.name.trim(),
@@ -84,7 +84,12 @@ export async function deleteEmployee(userId: number) {
     .limit(1)
     .then((r) => r[0]);
   if (!emp) throw new Error("Employee not found.");
-  await db.update(schema.users).set({ deletedAt: new Date() }).where(eq(schema.users.id, userId));
+  // FIX: suffix the email on soft-delete so the original email can be reused
+  // for a new employee. Without this, the unique constraint blocks re-hiring.
+  await db.update(schema.users).set({
+    deletedAt: new Date(),
+    email: sql`"deleted_" || ${schema.users.id} || "_" || ${schema.users.email}`,
+  }).where(eq(schema.users.id, userId));
   await db.update(schema.sessions).set({ revokedAt: new Date() }).where(and(eq(schema.sessions.userId, userId), isNull(schema.sessions.revokedAt)));
   revalidatePath("/employees");
 }
@@ -96,7 +101,7 @@ export async function toggleEmployeeActive(userId: number) {
   const emp = await db
     .select({ active: schema.users.active })
     .from(schema.users)
-    .where(eq(schema.users.id, userId))
+    .where(and(eq(schema.users.id, userId), isNull(schema.users.deletedAt)))
     .limit(1)
     .then((r) => r[0]);
   if (!emp) throw new Error("Employee not found.");

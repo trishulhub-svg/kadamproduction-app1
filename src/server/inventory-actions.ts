@@ -1,7 +1,7 @@
 // src/server/inventory-actions.ts
 "use server";
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { generateBarcode } from "@/lib/barcode";
@@ -62,6 +62,11 @@ export async function updateItem(itemId: number, input: { name?: string; categor
     // M2: basic barcode format validation (alphanumeric, 4-30 chars)
     const bc = input.newBarcode.trim();
     if (!/^[A-Za-z0-9]{4,30}$/.test(bc)) throw new Error("Invalid barcode format.");
+    // FIX: check barcode uniqueness before assigning — only among non-deleted items.
+    const clash = await db.select({ id: schema.items.id }).from(schema.items)
+      .where(and(eq(schema.items.barcode, bc), isNull(schema.items.deletedAt), ne(schema.items.id, itemId)))
+      .limit(1);
+    if (clash.length) throw new Error("Barcode is already assigned to another item.");
     patch.barcode = bc;
   }
   await db.update(schema.items).set(patch).where(eq(schema.items.id, itemId));

@@ -18,7 +18,15 @@ export async function createCategory(input: { name: string; description?: string
 export async function updateCategory(id: number, input: { name?: string; description?: string }) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
-  await db.update(schema.categories).set({ name: input.name?.trim(), description: input.description?.trim() }).where(eq(schema.categories.id, id));
+  const patch: { name?: string; description?: string | null } = {};
+  if (input.name !== undefined) {
+    const name = input.name.trim();
+    if (name.length < 2) throw new Error("Category name must be at least 2 characters.");
+    patch.name = name;
+  }
+  if (input.description !== undefined) patch.description = input.description.trim() || null;
+  if (Object.keys(patch).length === 0) return;
+  await db.update(schema.categories).set(patch).where(eq(schema.categories.id, id));
   revalidatePath("/categories");
 }
 
@@ -56,7 +64,15 @@ export async function createSubcategory(input: { name: string; categoryId: numbe
 export async function updateSubcategory(id: number, input: { name?: string; description?: string }) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
-  await db.update(schema.subcategories).set({ name: input.name?.trim(), description: input.description?.trim() }).where(eq(schema.subcategories.id, id));
+  const patch: { name?: string; description?: string | null } = {};
+  if (input.name !== undefined) {
+    const name = input.name.trim();
+    if (name.length < 2) throw new Error("Sub-category name must be at least 2 characters.");
+    patch.name = name;
+  }
+  if (input.description !== undefined) patch.description = input.description.trim() || null;
+  if (Object.keys(patch).length === 0) return;
+  await db.update(schema.subcategories).set(patch).where(eq(schema.subcategories.id, id));
   revalidatePath("/categories");
 }
 
@@ -82,15 +98,26 @@ export async function createCategoryItem(input: { name: string; subcategoryId: n
   const [sub] = await db.select({ categoryId: schema.subcategories.categoryId }).from(schema.subcategories).where(eq(schema.subcategories.id, input.subcategoryId)).limit(1);
   if (!sub) throw new Error("Sub-category not found.");
   const name = input.name.trim().toUpperCase();
-  await db.insert(schema.items).values({
-    name,
-    categoryId: sub.categoryId,
-    subcategoryId: input.subcategoryId,
-    description: input.description?.trim() || null,
-    quantity: Number(input.quantity) || 0,
-    barcode: generateBarcode(),
-    status: "available",
-  });
-  revalidatePath("/categories");
-  revalidatePath("/inventory");
+  // L15: retry the insert on barcode collisions, regenerating the barcode each attempt.
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await db.insert(schema.items).values({
+        name,
+        categoryId: sub.categoryId,
+        subcategoryId: input.subcategoryId,
+        description: input.description?.trim() || null,
+        quantity: Number(input.quantity) || 0,
+        barcode: generateBarcode(),
+        status: "available",
+      });
+      revalidatePath("/categories");
+      revalidatePath("/inventory");
+      return;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  console.error("[categories] barcode collision after 3 attempts:", lastErr);
+  throw new Error("Failed to generate a unique barcode. Please try again.");
 }

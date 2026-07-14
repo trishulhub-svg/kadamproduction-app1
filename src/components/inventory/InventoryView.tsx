@@ -163,14 +163,16 @@ function AddModal({ categories, subcategories, onClose }: { categories: { id: nu
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setPending(true);
     const f = new FormData(e.currentTarget);
-    await createItem({
-      name: String(f.get("name")),
-      categoryId: Number(f.get("categoryId")) || undefined,
-      subcategoryId: Number(f.get("subcategoryId")) || undefined,
-      description: String(f.get("description") || ""),
-      quantity: Number(f.get("quantity")),
-    });
-    onClose();
+    try {
+      await createItem({
+        name: String(f.get("name")),
+        categoryId: Number(f.get("categoryId")) || undefined,
+        subcategoryId: Number(f.get("subcategoryId")) || undefined,
+        description: String(f.get("description") || ""),
+        quantity: Number(f.get("quantity")),
+      });
+      onClose();
+    } catch (err) { alert((err as Error).message); setPending(false); }
   }
   return (
     <Modal open onClose={onClose} title="Add New Item">
@@ -201,16 +203,18 @@ function EditModal({ item, categories, subcategories, onClose }: { item: ItemRow
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setPending(true);
     const f = new FormData(e.currentTarget);
-    await updateItem(item.id, {
-      name: String(f.get("name")),
-      categoryId: Number(f.get("categoryId")) || null,
-      subcategoryId: Number(f.get("subcategoryId")) || null,
-      description: String(f.get("description") || ""),
-      quantity: Number(f.get("quantity")),
-      status: String(f.get("status")),
-      newBarcode: String(f.get("newBarcode") || ""),
-    });
-    onClose();
+    try {
+      await updateItem(item.id, {
+        name: String(f.get("name")),
+        categoryId: Number(f.get("categoryId")) || null,
+        subcategoryId: Number(f.get("subcategoryId")) || null,
+        description: String(f.get("description") || ""),
+        quantity: Number(f.get("quantity")),
+        status: String(f.get("status")),
+        newBarcode: String(f.get("newBarcode") || ""),
+      });
+      onClose();
+    } catch (err) { alert((err as Error).message); setPending(false); }
   }
   return (
     <Modal open onClose={onClose} title="Edit Item">
@@ -238,14 +242,17 @@ function EditModal({ item, categories, subcategories, onClose }: { item: ItemRow
 function QtyModal({ item, onClose }: { item: ItemRow; onClose: () => void }) {
   const [pending, setPending] = useState(false);
   const [val, setVal] = useState(item.quantity);
-  async function save() { setPending(true); await quickUpdateQty(item.id, val); onClose(); }
+  async function save() {
+    setPending(true);
+    try { await quickUpdateQty(item.id, val); onClose(); } catch (err) { alert((err as Error).message); setPending(false); }
+  }
   return (
     <Modal open onClose={onClose} title="Quick Quantity Update">
       <div className="space-y-4">
         <p className="text-sm text-gray-600">{item.name}</p>
         <div className="flex items-center gap-3">
-          <Button variant="outline" type="button" onClick={() => setVal((v) => v - 1)}>−</Button>
-          <Input type="number" value={val} onChange={(e) => setVal(Number(e.target.value))} className="text-center" />
+          <Button variant="outline" type="button" onClick={() => setVal((v) => Math.max(0, v - 1))}>−</Button>
+          <Input type="number" min={0} value={val} onChange={(e) => { const n = Number(e.target.value); setVal(Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0); }} className="text-center" />
           <Button variant="outline" type="button" onClick={() => setVal((v) => v + 1)}>+</Button>
         </div>
         <div className="flex justify-end gap-2"><Button variant="ghost" type="button" onClick={onClose}>Cancel</Button><Button onClick={save} disabled={pending}>Save</Button></div>

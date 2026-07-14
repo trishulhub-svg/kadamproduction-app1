@@ -89,7 +89,9 @@ export async function listItems(opts?: { categoryId?: number; subcategoryId?: nu
   return rows.map((r) => ({
     ...r,
     committed: Number(r.committed ?? 0),
-    available: Math.max(0, r.quantity - Number(r.committed ?? 0)),
+    // FIX: damaged items report 0 available — they cannot be booked regardless
+    // of quantity, preventing operators from reserving out-of-service stock.
+    available: r.status === "damaged" ? 0 : Math.max(0, r.quantity - Number(r.committed ?? 0)),
   }));
 }
 

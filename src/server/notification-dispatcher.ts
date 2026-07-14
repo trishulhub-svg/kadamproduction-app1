@@ -39,7 +39,21 @@ export async function dispatchNotification(input: NotifyInput) {
     link: input.link ?? null,
   }));
 
-  await db.insert(schema.notifications).values(values);
+  // FIX: try a single batch insert, but if it fails (e.g. FK violation from a
+  // stale userId), fall back to inserting one-by-one so one bad recipient does
+  // not block notifications for everyone else.
+  try {
+    await db.insert(schema.notifications).values(values);
+  } catch (err) {
+    console.error("[dispatcher] batch insert failed, falling back to per-user:", err);
+    for (const v of values) {
+      try {
+        await db.insert(schema.notifications).values(v);
+      } catch (e) {
+        console.error("[dispatcher] failed to notify user", v.userId, e);
+      }
+    }
+  }
 }
 
 const IMPORTANT_TYPES = new Set([

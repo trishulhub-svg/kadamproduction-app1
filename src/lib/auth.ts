@@ -304,7 +304,15 @@ export async function verifyForgotOtp(email: string, otp: string): Promise<{ ok:
   const row = await db.select().from(schema.settings).where(eq(schema.settings.key, key)).limit(1).then((r) => r[0]);
   if (!row) return { ok: false, error: "No OTP was requested for this email." };
 
-  const data = JSON.parse(row.value);
+  let data: { otp: string; expiresAt: number };
+  try { data = JSON.parse(row.value); } catch {
+    await db.delete(schema.settings).where(eq(schema.settings.key, key));
+    return { ok: false, error: "OTP record corrupted. Please request a new one." };
+  }
+  if (!data.otp || typeof data.expiresAt !== "number") {
+    await db.delete(schema.settings).where(eq(schema.settings.key, key));
+    return { ok: false, error: "OTP record invalid. Please request a new one." };
+  }
   if (Date.now() > data.expiresAt) {
     await db.delete(schema.settings).where(eq(schema.settings.key, key));
     return { ok: false, error: "OTP has expired. Request a new one." };

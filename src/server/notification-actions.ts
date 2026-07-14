@@ -1,5 +1,5 @@
 "use server";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 
@@ -31,10 +31,10 @@ export async function getUnreadCount() {
   const user = await getCurrentUser();
   if (!user) return 0;
   const rows = await db
-    .select()
+    .select({ n: sql<number>`count(*)` })
     .from(schema.notifications)
     .where(and(eq(schema.notifications.userId, user.id), eq(schema.notifications.read, false)));
-  return rows.length;
+  return Number(rows[0]?.n ?? 0);
 }
 
 export async function markNotificationRead(id: number) {

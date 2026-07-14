@@ -203,15 +203,17 @@ function AddModal({ orders, onClose }: { orders: { id: number; clientName: strin
     e.preventDefault();
     setPending(true);
     const f = new FormData(e.currentTarget);
-    await createTransaction({
-      orderId: Number(f.get("orderId")) || undefined,
-      type: String(f.get("type")) as "income" | "expense",
-      category: String(f.get("category")),
-      amount: Number(f.get("amount")),
-      description: String(f.get("description") || ""),
-      date: String(f.get("date")),
-    });
-    onClose();
+    try {
+      await createTransaction({
+        orderId: Number(f.get("orderId")) || undefined,
+        type: String(f.get("type")) as "income" | "expense",
+        category: String(f.get("category")),
+        amount: Number(f.get("amount")),
+        description: String(f.get("description") || ""),
+        date: String(f.get("date")),
+      });
+      onClose();
+    } catch (err) { alert((err as Error).message); setPending(false); }
   }
   return (
     <Modal open onClose={onClose} title="Add Finance Entry">
@@ -222,7 +224,7 @@ function AddModal({ orders, onClose }: { orders: { id: number; clientName: strin
           <div><label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label><Input name="category" placeholder="Advance Payment, Transport\u2026" required defaultValue="Advance Payment" /></div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div><label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Amount (\u20B9)</label><Input name="amount" type="number" min={0} required /></div>
+          <div><label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Amount (\u20B9)</label><Input name="amount" type="number" min="0.01" step="0.01" required /></div>
           <div><label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label><Input name="date" type="date" required defaultValue={todayISO()} /></div>
         </div>
         <div><label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label><Input name="description" /></div>
@@ -234,5 +236,5 @@ function AddModal({ orders, onClose }: { orders: { id: number; clientName: strin
 
 function DelBtn({ id }: { id: number }) {
   const [pending, setPending] = useState(false);
-  return <Button size="sm" variant="danger" disabled={pending} onClick={async () => { if (confirm("Delete this entry?")) { setPending(true); await deleteTransaction(id); } }}>{pending ? "\u2026" : "Delete"}</Button>;
+  return <Button size="sm" variant="danger" disabled={pending} onClick={async () => { if (confirm("Delete this entry?")) { setPending(true); try { await deleteTransaction(id); } catch (e) { alert((e as Error).message); setPending(false); } } }}>{pending ? "\u2026" : "Delete"}</Button>;
 }

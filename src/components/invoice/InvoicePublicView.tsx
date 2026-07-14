@@ -17,26 +17,59 @@ type OrderData = {
   gstEnabled: boolean | null;
   createdAt: string;
 };
-type InvoiceData = { order: OrderData; orderNum: string; paid: number; grandTotal: number; gstNumber: string; gstPercentage: number; gstAmount: number; total: number; due: number; sameAddress: boolean; billingAddr: string; eventAddr: string };
+type InvoiceData = {
+  order: OrderData;
+  orderNum: string;
+  paid: number;
+  grandTotal: number;
+  gstNumber: string;
+  gstPercentage: number;
+  gstAmount: number;
+  total: number;
+  due: number;
+  sameAddress: boolean;
+  billingAddr: string;
+  eventAddr: string;
+};
 
-export function InvoicePublicView({ invoice }: { invoice: InvoiceData }) {
-  const { order, orderNum, paid, gstNumber, gstPercentage, gstAmount, total, due, sameAddress, billingAddr, eventAddr } = invoice;
-  const [step, setStep] = useState<"checking" | "verify" | "otp" | "view">("checking");
+export function InvoicePublicView({ orderId, orderNum }: { orderId: number; orderNum: string }) {
+  const [step, setStep] = useState<"checking" | "verify" | "otp" | "view" | "loading_invoice">("checking");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [invoice, setInvoice] = useState<InvoiceData | null>(null);
 
+  // Check if already verified (valid cookie)
   useEffect(() => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 8000);
-    fetch(`/api/invoice-otp?orderId=${order.id}`, { signal: ctrl.signal })
+    fetch(`/api/invoice-otp?orderId=${orderId}`, { signal: ctrl.signal })
       .then((r) => r.json())
-      .then((data) => setStep(data.verified ? "view" : "verify"))
+      .then((data) => setStep(data.verified ? "loading_invoice" : "verify"))
       .catch(() => setStep("verify"))
       .finally(() => clearTimeout(t));
     return () => { ctrl.abort(); clearTimeout(t); };
-  }, [order.id]);
+  }, [orderId]);
+
+  // Load invoice data when verified
+  useEffect(() => {
+    if (step !== "loading_invoice") return;
+    const ctrl = new AbortController();
+    fetch(`/api/invoice-data/${orderId}`, { signal: ctrl.signal })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.ok && data.invoice) {
+          setInvoice(data.invoice as InvoiceData);
+          setStep("view");
+        } else {
+          // Access denied (cookie invalid/expired) — go back to verify
+          setStep("verify");
+        }
+      })
+      .catch(() => setStep("verify"));
+    return () => ctrl.abort();
+  }, [step, orderId]);
 
   async function sendOtp(e: React.FormEvent) {
     e.preventDefault();
@@ -46,7 +79,7 @@ export function InvoicePublicView({ invoice }: { invoice: InvoiceData }) {
       const r = await fetch("/api/invoice-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "send_otp", orderId: order.id, email: email.trim() }),
+        body: JSON.stringify({ action: "send_otp", orderId, email: email.trim() }),
       });
       const data = await r.json();
       if (!r.ok) { setError(data.error); setPending(false); return; }
@@ -63,16 +96,32 @@ export function InvoicePublicView({ invoice }: { invoice: InvoiceData }) {
       const r = await fetch("/api/invoice-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "verify_otp", orderId: order.id, email: email.trim(), otp: otp.trim() }),
+        body: JSON.stringify({ action: "verify_otp", orderId, email: email.trim(), otp: otp.trim() }),
       });
       const data = await r.json();
       if (!r.ok) { setError(data.error); setPending(false); return; }
-      setStep("view");
+      setStep("loading_invoice");
     } catch { setError("Network error. Try again."); }
     setPending(false);
   }
 
-  if (step === "checking") {
+  async function resendOtp() {
+    setError("");
+    setPending(true);
+    try {
+      const r = await fetch("/api/invoice-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "send_otp", orderId, email: email.trim() }),
+      });
+      const d = await r.json();
+      if (!r.ok) setError(d.error);
+      else setError("");
+    } catch { setError("Network error."); }
+    setPending(false);
+  }
+
+  if (step === "checking" || step === "loading_invoice") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-800 border-t-transparent dark:border-gray-300 dark:border-t-transparent" />
@@ -130,7 +179,7 @@ export function InvoicePublicView({ invoice }: { invoice: InvoiceData }) {
                   Use a different email
                 </button>
                 <span className="text-xs text-gray-300 dark:text-gray-600">|</span>
-                <button type="button" onClick={async () => { setError(""); setPending(true); try { const r = await fetch("/api/invoice-otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "send_otp", orderId: order.id, email: email.trim() }) }); const d = await r.json(); if (!r.ok) setError(d.error); else setError(""); } catch { setError("Network error."); } setPending(false); }} className="text-xs text-gray-500 underline hover:text-gray-700">
+                <button type="button" disabled={pending} onClick={resendOtp} className="text-xs text-gray-500 underline hover:text-gray-700 disabled:opacity-50">
                   Resend OTP
                 </button>
               </div>
@@ -140,6 +189,10 @@ export function InvoicePublicView({ invoice }: { invoice: InvoiceData }) {
       </div>
     );
   }
+
+  // step === "view" — render the invoice from fetched data
+  if (!invoice) return null;
+  const { order, paid, gstNumber, gstPercentage, gstAmount, total, due, sameAddress, billingAddr, eventAddr } = invoice;
 
   return (
     <div className="mx-auto max-w-3xl p-3 sm:p-8">

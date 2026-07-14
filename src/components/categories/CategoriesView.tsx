@@ -184,8 +184,10 @@ function EditMasterModal({ cat, onClose }: { cat: MasterCat; onClose: () => void
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setPending(true);
     const f = new FormData(e.currentTarget);
-    await updateCategory(cat.id, { name: String(f.get("name")), description: String(f.get("description") || "") });
-    onClose();
+    try {
+      await updateCategory(cat.id, { name: String(f.get("name")), description: String(f.get("description") || "") });
+      onClose();
+    } catch (err) { alert((err as Error).message); setPending(false); }
   }
   return (
     <Modal open onClose={onClose} title="Edit Master Category">
@@ -225,8 +227,10 @@ function EditSubModal({ sub, onClose }: { sub: SubCat; onClose: () => void }) {
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setPending(true);
     const f = new FormData(e.currentTarget);
-    await updateSubcategory(sub.id, { name: String(f.get("name")), description: String(f.get("description") || "") });
-    onClose();
+    try {
+      await updateSubcategory(sub.id, { name: String(f.get("name")), description: String(f.get("description") || "") });
+      onClose();
+    } catch (err) { alert((err as Error).message); setPending(false); }
   }
   return (
     <Modal open onClose={onClose} title="Edit Sub-Category">

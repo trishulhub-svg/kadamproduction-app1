@@ -1,10 +1,13 @@
 // src/app/invoice/[id]/page.tsx — public invoice with OTP verification
-import { eq } from "drizzle-orm";
+// SECURITY FIX: This page is now a thin shell. It loads ONLY the order number
+// (not PII) and passes just the orderId + orderNum to the client component.
+// The client component fetches the full invoice data via /api/invoice-data only
+// AFTER OTP verification succeeds. This prevents PII from leaking in the RSC
+// payload before OTP verification.
+import { eq, and, isNull } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import { formatOrderNumber } from "@/lib/invoice-number";
-import { formatINR } from "@/lib/utils";
-import { getGstSettings } from "@/lib/settings";
 import { InvoicePublicView } from "@/components/invoice/InvoicePublicView";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -14,57 +17,17 @@ export default async function PublicInvoicePage({ params }: PageProps) {
   const orderId = Number(id);
   if (!orderId) notFound();
 
-  const order = await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).limit(1).then((r) => r[0]);
+  // Load ONLY the minimal data needed to show the verification screen.
+  // Do NOT load client name, email, phone, address, or amounts here.
+  const order = await db
+    .select({ id: schema.orders.id, createdAt: schema.orders.createdAt })
+    .from(schema.orders)
+    .where(and(eq(schema.orders.id, orderId), isNull(schema.orders.deletedAt)))
+    .limit(1)
+    .then((r) => r[0]);
   if (!order) notFound();
 
-  const txns = await db.select().from(schema.finance).where(eq(schema.finance.orderId, orderId));
-  const paid = txns.filter((t) => t.type === "income").reduce((a, t) => a + Number(t.amount), 0);
-  const total = Number(order.totalBudget);
-
   const orderNum = formatOrderNumber(order.id, order.createdAt);
-  const billingAddr = (order.billingAddress ?? "").trim();
-  const eventAddr = (order.address ?? "").trim();
-  const sameAddress = !billingAddr || !eventAddr || billingAddr.toLowerCase() === eventAddr.toLowerCase();
-  const showGst = !!order.gstEnabled;
 
-  let gstNumber = "";
-  let gstPercentage = 0;
-  let gstAmount = 0;
-  if (showGst) {
-    try { const g = await getGstSettings(); gstNumber = g.number; gstPercentage = g.percentage; gstAmount = Math.round(total * gstPercentage / 100); } catch {}
-  }
-  const grandTotal = total + gstAmount;
-  const due = Math.max(0, grandTotal - paid);
-
-  return (
-    <InvoicePublicView
-      invoice={{
-        order: {
-          id: order.id,
-          clientName: order.clientName,
-          contactEmail: order.contactEmail,
-          contactPhone: order.contactPhone,
-          contactPerson: order.contactPerson,
-          eventDate: order.eventDate,
-          eventCategory: order.eventCategory,
-          address: order.address,
-          billingAddress: order.billingAddress,
-          totalBudget: order.totalBudget,
-          gstEnabled: order.gstEnabled,
-          createdAt: order.createdAt ? order.createdAt.toISOString() : new Date().toISOString(),
-        },
-        orderNum,
-        paid,
-        grandTotal,
-        gstNumber,
-        gstPercentage,
-        gstAmount,
-        total,
-        due,
-        sameAddress,
-        billingAddr,
-        eventAddr,
-      }}
-    />
-  );
+  return <InvoicePublicView orderId={order.id} orderNum={orderNum} />;
 }

@@ -63,8 +63,7 @@ export function SettingsView({ logoUrl, scanEnabled, smtp, gst }: { logoUrl: str
   async function remove() {
     if (!confirm("Remove the logo?")) return;
     setPending(true);
-    await removeLogo();
-    setPreview(null);
+    try { await removeLogo(); setPreview(null); } catch (err) { setError((err as Error).message); }
     setPending(false);
   }
 

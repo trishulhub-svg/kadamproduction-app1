@@ -1,7 +1,7 @@
 // src/server/scan-actions.ts
 "use server";
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 
@@ -11,7 +11,7 @@ export async function scanItem(barcode: string, action: "checkout" | "checkin" |
 
   const code = barcode.trim();
   if (!code) throw new Error("Enter a barcode.");
-  const item = await db.select().from(schema.items).where(eq(schema.items.barcode, code)).limit(1).then((r) => r[0]);
+  const item = await db.select().from(schema.items).where(and(eq(schema.items.barcode, code), isNull(schema.items.deletedAt))).limit(1).then((r) => r[0]);
   if (!item) throw new Error("Item not found for this barcode.");
 
   if (action !== "checkout" && action !== "checkin" && action !== "damaged") {
@@ -20,8 +20,10 @@ export async function scanItem(barcode: string, action: "checkout" | "checkin" |
 
   if (action === "checkout") {
     if (!orderId) throw new Error("Select an ongoing event.");
-    const order = await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).limit(1).then((r) => r[0]);
+    const order = await db.select().from(schema.orders).where(and(eq(schema.orders.id, orderId), isNull(schema.orders.deletedAt))).limit(1).then((r) => r[0]);
     if (!order) throw new Error("Order not found.");
+    // FIX: validate the order is actually "ongoing" — don't allow checkout to upcoming/completed/cancelled orders.
+    if (order.status !== "ongoing") throw new Error(`Cannot check out to a "${order.status}" order. Only ongoing events are eligible.`);
     if (item.status === "busy" && item.currentOrderId) throw new Error("This item is already checked out to another order. Check it in first.");
     await db.update(schema.items).set({ status: "busy", currentOrderId: orderId }).where(eq(schema.items.id, item.id));
     await db.insert(schema.orderItems).values({ orderId, itemId: item.id, quantity: 1, scannedOutAt: new Date() });

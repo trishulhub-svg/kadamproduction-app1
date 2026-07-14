@@ -36,8 +36,9 @@ export async function POST(req: NextRequest) {
       const key = `otp:${orderId}`;
       const existing = await db.select().from(schema.settings).where(eq(schema.settings.key, key)).limit(1).then((r) => r[0]);
       if (existing) {
-        const data = JSON.parse(existing.value);
-        if (data.attempts >= MAX_ATTEMPTS) {
+        let data: { attempts?: number } = {};
+        try { data = JSON.parse(existing.value); } catch { data = { attempts: 0 }; }
+        if ((data.attempts || 0) >= MAX_ATTEMPTS) {
           return NextResponse.json({ error: "Too many OTP attempts. Please try again later." }, { status: 429 });
         }
       }
@@ -51,9 +52,19 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // SECURITY FIX: do NOT reset attempts on resend. Preserve the existing
+      // attempt count so the lockout cannot be defeated by simply requesting a
+      // new OTP. Only generate a new OTP code + reset the creation time.
+      const prevAttempts = (() => {
+        if (existing) {
+          try { return JSON.parse(existing.value).attempts || 0; } catch { return 0; }
+        }
+        return 0;
+      })();
+
       const otpCode = String(randomInt(100000, 1000000));
       const hashed = await bcrypt.hash(otpCode, 12);
-      const value = JSON.stringify({ otp: hashed, email, attempts: 0, createdAt: Date.now() });
+      const value = JSON.stringify({ otp: hashed, email, attempts: prevAttempts, createdAt: Date.now() });
 
       if (existing) {
         await db.update(schema.settings).set({ value }).where(eq(schema.settings.key, key));
@@ -84,11 +95,28 @@ export async function POST(req: NextRequest) {
     if (action === "verify_otp") {
       if (!otp) return NextResponse.json({ error: "OTP is required" }, { status: 400 });
 
+      // SECURITY FIX: add rate limiting to verify_otp to prevent brute force.
+      const verifyRl = await checkRateLimit(`otp_verify:${orderId}`, { max: 5, windowMs: 15 * 60 * 1000 });
+      if (!verifyRl.allowed && !verifyRl.dbError) {
+        return NextResponse.json(
+          { error: "Too many verification attempts. Please try again later.", retryAfter: verifyRl.retryAfter },
+          { status: 429, headers: verifyRl.retryAfter ? { "Retry-After": String(verifyRl.retryAfter) } : {} },
+        );
+      }
+
       const key = `otp:${orderId}`;
       const row = await db.select().from(schema.settings).where(eq(schema.settings.key, key)).limit(1).then((r) => r[0]);
       if (!row) return NextResponse.json({ error: "No OTP was sent. Request a new one." }, { status: 400 });
 
-      const data = JSON.parse(row.value);
+      let data: { otp: string; attempts: number; createdAt: number };
+      try { data = JSON.parse(row.value); } catch {
+        await db.delete(schema.settings).where(eq(schema.settings.key, key));
+        return NextResponse.json({ error: "OTP record corrupted. Please request a new one." }, { status: 400 });
+      }
+      if (!data.otp || typeof data.attempts !== "number" || typeof data.createdAt !== "number") {
+        await db.delete(schema.settings).where(eq(schema.settings.key, key));
+        return NextResponse.json({ error: "OTP record invalid. Please request a new one." }, { status: 400 });
+      }
       if (data.attempts >= MAX_ATTEMPTS) {
         await db.delete(schema.settings).where(eq(schema.settings.key, key));
         return NextResponse.json({ error: "Too many failed attempts. Request a new OTP." }, { status: 429 });

@@ -76,9 +76,9 @@ export function EmployeesView({ employees }: { employees: Emp[] }) {
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
                         <EditBtn onClick={() => setEditTarget(e)} />
-                        <ToggleBtn id={e.id} name={e.name} active={e.active} />
+                        <ToggleBtn id={e.id} name={e.name} active={e.active} onError={setErrMsg} />
                         <ResetBtn onOpen={() => setResetTarget({ id: e.id, name: e.name })} />
-                        <DeleteBtn id={e.id} name={e.name} />
+                        <DeleteBtn id={e.id} name={e.name} onError={setErrMsg} />
                       </div>
                     </td>
                   </tr>
@@ -118,16 +118,16 @@ function AddModal({ onClose, onError }: { onClose: () => void; onError: (msg: st
         <div><Label>Name *</Label><Input name="name" required /></div>
         <div><Label>Email *</Label><Input name="email" type="email" required /></div>
         <div><Label>Phone</Label><Input name="phone" /></div>
-        <div><Label>Password *</Label><Input name="password" type="password" required minLength={6} /></div>
+        <div><Label>Password *</Label><Input name="password" type="password" required minLength={8} /></div>
         <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" type="button" onClick={onClose}>Cancel</Button><Button type="submit" disabled={pending}>{pending ? "Saving…" : "Add"}</Button></div>
       </form>
     </Modal>
   );
 }
 
-function ToggleBtn({ id, name, active }: { id: number; name: string; active: boolean }) {
+function ToggleBtn({ id, name, active, onError }: { id: number; name: string; active: boolean; onError: (msg: string) => void }) {
   const [pending, setPending] = useState(false);
-  return <Button size="sm" variant="outline" disabled={pending} onClick={async () => { setPending(true); await toggleEmployeeActive(id); setPending(false); }}>{pending ? "…" : active ? "Deactivate" : "Reactivate"}</Button>;
+  return <Button size="sm" variant="outline" disabled={pending} onClick={async () => { setPending(true); try { await toggleEmployeeActive(id); } catch (err) { onError((err as Error).message); } finally { setPending(false); } }}>{pending ? "…" : active ? "Deactivate" : "Reactivate"}</Button>;
 }
 
 function ResetBtn({ onOpen }: { onOpen: () => void }) {
@@ -164,9 +164,9 @@ function ResetPwdModal({ target, onClose, onError }: { target: { id: number; nam
   );
 }
 
-function DeleteBtn({ id, name }: { id: number; name: string }) {
+function DeleteBtn({ id, name, onError }: { id: number; name: string; onError: (msg: string) => void }) {
   const [pending, setPending] = useState(false);
-  return <Button size="sm" variant="danger" disabled={pending} onClick={async () => { if (confirm(`Remove ${name}?`)) { setPending(true); await deleteEmployee(id); } }}>{pending ? "…" : "Delete"}</Button>;
+  return <Button size="sm" variant="danger" disabled={pending} onClick={async () => { if (confirm(`Remove ${name}?`)) { setPending(true); try { await deleteEmployee(id); } catch (err) { onError((err as Error).message); setPending(false); } } }}>{pending ? "…" : "Delete"}</Button>;
 }
 
 function EditBtn({ onClick }: { onClick: () => void }) {

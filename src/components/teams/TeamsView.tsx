@@ -35,8 +35,7 @@ function TeamCard({ team, employees }: { team: Team; employees: { id: number; na
   async function add() {
     if (!sel) return;
     setPending(true);
-    await addMember(team.id, Number(sel));
-    setSel("");
+    try { await addMember(team.id, Number(sel)); setSel(""); } catch (err) { alert((err as Error).message); }
     setPending(false);
   }
   return (
