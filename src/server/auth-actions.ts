@@ -9,11 +9,16 @@ export async function logoutAction() {
 }
 
 export async function loginAction(_prev: { error?: string } | null, formData: FormData) {
-  const email = String(formData.get("email") || "").toLowerCase().trim();
-  const password = String(formData.get("password") || "");
-  const res = await login(email, password);
-  if (!res.ok) return { error: res.error };
-  return { ok: true, mustChangePwd: res.mustChangePwd ?? false };
+  try {
+    const email = String(formData.get("email") || "").toLowerCase().trim();
+    const password = String(formData.get("password") || "");
+    const res = await login(email, password);
+    if (!res.ok) return { error: res.error };
+    return { ok: true, mustChangePwd: res.mustChangePwd ?? false };
+  } catch (err) {
+    console.error("[auth-actions] loginAction unexpected error:", err);
+    return { error: "Server error (action). Please try again." };
+  }
 }
 
 export async function changePasswordAction(_prev: { ok: boolean; error?: string } | null, formData: FormData) {
