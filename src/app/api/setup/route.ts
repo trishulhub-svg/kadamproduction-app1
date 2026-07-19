@@ -248,6 +248,7 @@ export async function GET(req: Request) {
       { sql: "ALTER TABLE orders ADD COLUMN setup_done INTEGER NOT NULL DEFAULT 0", label: "orders.setup_done" },
     { sql: "ALTER TABLE orders ADD COLUMN gst_enabled INTEGER NOT NULL DEFAULT 0", label: "orders.gst_enabled" },
       { sql: "ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1", label: "users.active" },
+      { sql: "ALTER TABLE users ADD COLUMN email_verified_at INTEGER", label: "users.email_verified_at" },
     ];
     for (const a of alterStmts) {
       try {
@@ -256,6 +257,15 @@ export async function GET(req: Request) {
       } catch {
         log.push(`Migration: ${a.label} — already exists`);
       }
+    }
+    // Backfill: existing accounts are treated as already verified.
+    try {
+      await client.execute(
+        "UPDATE users SET email_verified_at = COALESCE(email_verified_at, created_at, unixepoch()) WHERE email_verified_at IS NULL AND deleted_at IS NULL"
+      );
+      log.push("Migration: users.email_verified_at backfill — OK");
+    } catch {
+      log.push("Migration: users.email_verified_at backfill — skipped");
     }
     // Default scan_enabled setting
     try {
@@ -272,7 +282,7 @@ export async function GET(req: Request) {
       const adminPassword = crypto.randomBytes(12).toString("base64url");
       const hash = await bcrypt.hash(adminPassword, 12);
       await client.execute({
-        sql: "INSERT INTO users (name, email, password, role, must_change_pwd) VALUES (?, ?, ?, 'admin', 1)",
+        sql: "INSERT INTO users (name, email, password, role, must_change_pwd, email_verified_at, active) VALUES (?, ?, ?, 'admin', 1, unixepoch(), 1)",
         args: ["KP Admin", "admin@kadamproduction.in", hash],
       });
       adminSeeded = true;

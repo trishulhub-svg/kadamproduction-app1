@@ -3,7 +3,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC = ["/login", "/forgot-password", "/invoice"];
+const PUBLIC = ["/login", "/forgot-password", "/verify-email", "/invoice"];
 const COOKIE = "kp_session";
 
 async function payloadFromToken(

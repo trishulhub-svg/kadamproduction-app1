@@ -6,12 +6,48 @@ import { eq, and, isNull, gte, asc } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db, schema } from "./db";
 import { checkRateLimit as generalRateLimit, clearRateLimit } from "./rate-limiter";
+import {
+  AUTH_CAPTCHA_REQUIRED,
+  AUTH_FORGOT_OK,
+  AUTH_GENERIC_FAIL,
+  AUTH_LOCKED,
+  AUTH_OTP_FAIL,
+  AUTH_RATE_LIMITED,
+  AUTH_TOKEN_FAIL,
+  AUTH_VERIFY_FAIL,
+  MIN_FORGOT_MS,
+  MIN_LOGIN_MS,
+  MIN_OTP_MS,
+  MIN_RESET_MS,
+  MIN_VERIFY_MS,
+  OTP_TTL_MS,
+  RESET_TOKEN_TTL_MS,
+  VERIFY_CODE_TTL_MS,
+  authBucket,
+  clearAuthFailures,
+  createAuthCaptcha,
+  equalizeTiming,
+  getLockoutStatus,
+  getRequestIp,
+  recordAuthFailure,
+  sha256Hex,
+  verifyAuthCaptcha,
+} from "./auth-security";
 
 const COOKIE = "kp_session";
 const MAX_ADMIN_DEVICES = 2;
 const SESSION_GRACE_MS = 60_000; // Turso read-after-write grace for new sessions
-// Precomputed bcrypt of a fixed string — used only for timing equalization.
-const DUMMY_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+// Known-good bcrypt hash (cost 12) of a constant dummy password for timing equalization.
+const DUMMY_BCRYPT =
+  "$2a$12$3i0y0Tlv64KDQG6TcXbqOuh.1cBdUqWkh5RqkkQb.O4yV9cTr6Nsm";
+
+export type AuthFailResult = {
+  ok: false;
+  error: string;
+  captchaRequired?: boolean;
+  captcha?: { id: string; question: string };
+  retryAfter?: number;
+};
 
 function getSecret(): Uint8Array {
   const s = process.env.AUTH_SECRET;
@@ -201,12 +237,56 @@ export async function requireAdmin(): Promise<SessionUser | null> {
 
 export async function login(
   email: string,
-  password: string
-): Promise<{ ok: true; mustChangePwd?: boolean } | { ok: false; error: string }> {
+  password: string,
+  captcha?: { id?: string; answer?: string }
+): Promise<{ ok: true; mustChangePwd?: boolean } | AuthFailResult> {
+  const started = Date.now();
   const normalized = email.toLowerCase().trim();
-  const rl = await generalRateLimit(normalized, { max: 5, windowMs: 5 * 60 * 1000 });
-  if (!rl.allowed) {
-    return { ok: false, error: `Too many attempts. Try again in ${rl.retryAfter ?? 60}s.` };
+  const ip = await getRequestIp();
+  const bucket = authBucket("login", normalized, ip);
+
+  async function fail(error: string, status?: { captchaRequired?: boolean; retryAfter?: number }): Promise<AuthFailResult> {
+    const lock = await recordAuthFailure(bucket);
+    const captchaRequired = Boolean(status?.captchaRequired || lock.captchaRequired || lock.locked);
+    let captchaChallenge: { id: string; question: string } | undefined;
+    if (captchaRequired) {
+      try {
+        captchaChallenge = await createAuthCaptcha();
+      } catch (err) {
+        console.error("[auth] captcha create failed:", err);
+      }
+    }
+    await equalizeTiming(started, MIN_LOGIN_MS);
+    return {
+      ok: false,
+      error: lock.locked ? AUTH_LOCKED : error,
+      captchaRequired,
+      captcha: captchaChallenge,
+      retryAfter: lock.retryAfterSec ?? status?.retryAfter,
+    };
+  }
+
+  // IP spray protection + per-account window.
+  const rlEmail = await generalRateLimit(`login:${normalized}`, { max: 5, windowMs: 5 * 60 * 1000 });
+  const rlIp = await generalRateLimit(`login_ip:${ip}`, { max: 30, windowMs: 5 * 60 * 1000 });
+  if (!rlEmail.allowed || !rlIp.allowed) {
+    return fail(AUTH_RATE_LIMITED, {
+      captchaRequired: true,
+      retryAfter: rlEmail.retryAfter ?? rlIp.retryAfter,
+    });
+  }
+
+  const lock = await getLockoutStatus(bucket);
+  if (lock.locked) {
+    return fail(AUTH_LOCKED, { captchaRequired: true, retryAfter: lock.retryAfterSec });
+  }
+  if (lock.captchaRequired) {
+    const okCaptcha = await verifyAuthCaptcha(String(captcha?.id || ""), String(captcha?.answer || ""));
+    if (!okCaptcha) {
+      const challenge = await createAuthCaptcha();
+      await equalizeTiming(started, MIN_LOGIN_MS);
+      return { ok: false, error: AUTH_CAPTCHA_REQUIRED, captchaRequired: true, captcha: challenge };
+    }
   }
 
   let user: {
@@ -217,6 +297,7 @@ export async function login(
     role: "admin" | "employee";
     mustChangePwd: boolean;
     active: boolean | null;
+    emailVerifiedAt: Date | null;
   } | undefined;
 
   try {
@@ -229,6 +310,7 @@ export async function login(
         role: schema.users.role,
         mustChangePwd: schema.users.mustChangePwd,
         active: schema.users.active,
+        emailVerifiedAt: schema.users.emailVerifiedAt,
       })
       .from(schema.users)
       .where(and(eq(schema.users.email, normalized), isNull(schema.users.deletedAt)))
@@ -242,23 +324,21 @@ export async function login(
       const authToken = process.env.TURSO_AUTH_TOKEN;
       if (!url) throw new Error("TURSO_DATABASE_URL missing");
       const client = createClient({ url, authToken });
-
-      // Minimal columns that exist since the original PHP migration.
       let res;
       try {
         res = await client.execute({
-          sql: "SELECT id, name, email, password, role, must_change_pwd FROM users WHERE lower(email) = ? AND deleted_at IS NULL LIMIT 1",
+          sql: "SELECT id, name, email, password, role, must_change_pwd, active, email_verified_at FROM users WHERE lower(email) = ? AND deleted_at IS NULL LIMIT 1",
           args: [normalized],
         });
       } catch {
         res = await client.execute({
-          sql: "SELECT id, name, email, password, role, must_change_pwd FROM users WHERE lower(email) = ? LIMIT 1",
+          sql: "SELECT id, name, email, password, role, must_change_pwd, active FROM users WHERE lower(email) = ? AND deleted_at IS NULL LIMIT 1",
           args: [normalized],
         });
       }
-
       const row = res.rows[0] as Record<string, unknown> | undefined;
       if (row) {
+        const verifiedRaw = row.email_verified_at;
         user = {
           id: Number(row.id),
           name: String(row.name),
@@ -266,42 +346,42 @@ export async function login(
           password: String(row.password),
           role: String(row.role) as "admin" | "employee",
           mustChangePwd: Boolean(row.must_change_pwd),
-          active: true,
+          active: row.active === undefined || row.active === null ? true : Boolean(row.active),
+          emailVerifiedAt:
+            verifiedRaw === undefined || verifiedRaw === null
+              ? new Date() // legacy rows without column → treat as verified
+              : new Date(Number(verifiedRaw) * (Number(verifiedRaw) < 1e12 ? 1000 : 1)),
         };
       }
     } catch (err2) {
       console.error("[auth] users raw SQL fallback failed:", err2);
-      const detail = err2 instanceof Error ? err2.message : String(err2);
-      if (/401|unauthorized|auth/i.test(detail)) {
-        return {
-          ok: false,
-          error: "Database connection unauthorized. Update TURSO_AUTH_TOKEN in Vercel and redeploy.",
-        };
-      }
+      await equalizeTiming(started, MIN_LOGIN_MS);
       return { ok: false, error: "Server error (DB). Please try again." };
     }
   }
 
-  // Always run bcrypt to avoid timing-based email enumeration.
-  const hash = user?.password ?? DUMMY_HASH;
+  // Always run bcrypt — identical work whether or not the email exists.
+  const hash = user?.password ?? DUMMY_BCRYPT;
   let match = false;
   try {
     match = await bcrypt.compare(password, hash);
   } catch (err) {
     console.error("[auth] bcrypt compare error:", err);
+    await equalizeTiming(started, MIN_LOGIN_MS);
     return { ok: false, error: "Server error (auth). Please try again." };
   }
 
-  if (!user || !match) {
-    return { ok: false, error: "Invalid Credentials" };
-  }
+  // Single generic failure for missing user, bad password, or inactive/unverified.
+  // Pending email verification keeps active=false until proven — same error copy.
+  const activeOk = user ? user.active !== false : false;
 
-  if (user.active === false) {
-    return { ok: false, error: "Your account has been deactivated. Contact your administrator." };
+  if (!user || !match || !activeOk) {
+    return fail(AUTH_GENERIC_FAIL, { captchaRequired: lock.captchaRequired });
   }
 
   try {
-    await clearRateLimit(normalized);
+    await clearRateLimit(`login:${normalized}`);
+    await clearAuthFailures(bucket);
   } catch (err) {
     console.error("[auth] clearRateLimit error:", err);
   }
@@ -318,10 +398,7 @@ export async function login(
     });
   } catch (err) {
     console.error("[auth] sign token error:", err);
-    const msg = err instanceof Error ? err.message : String(err);
-    if (/AUTH_SECRET/i.test(msg)) {
-      return { ok: false, error: "Server error (secret). Please contact admin." };
-    }
+    await equalizeTiming(started, MIN_LOGIN_MS);
     return { ok: false, error: "Server error (token). Please try again." };
   }
   try {
@@ -334,8 +411,10 @@ export async function login(
     });
   } catch (err) {
     console.error("[auth] cookie set error:", err);
+    await equalizeTiming(started, MIN_LOGIN_MS);
     return { ok: false, error: "Server error (cookie). Please try again." };
   }
+  await equalizeTiming(started, MIN_LOGIN_MS);
   return { ok: true, mustChangePwd: Boolean(user.mustChangePwd) };
 }
 
@@ -359,17 +438,18 @@ export async function logout(): Promise<void> {
   store.delete(COOKIE);
 }
 
-/** Hash a password (bcrypt) — used by seed + employee create. */
+/** Hash a password with bcrypt (cost 12) — never store plaintext / MD5 / raw SHA-256. */
 export async function hashPassword(plain: string): Promise<string> {
   return bcrypt.hash(plain, 12);
 }
 
 function hashResetToken(token: string): string {
+  // Store only a SHA-256 digest of the random secret — never the raw token.
   return createHash("sha256").update(token).digest("hex");
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Forgot Password — OTP via SMTP
+// Forgot Password — OTP via SMTP (anti-enumeration + rate limit + CAPTCHA)
 // ──────────────────────────────────────────────────────────────────────────
 
 function generateOtp(): string {
@@ -377,12 +457,41 @@ function generateOtp(): string {
 }
 
 export async function sendForgotOtp(
-  email: string
-): Promise<{ ok: true } | { ok: false; error: string }> {
+  email: string,
+  captcha?: { id?: string; answer?: string }
+): Promise<{ ok: true; message: string; captchaRequired?: boolean; captcha?: { id: string; question: string } } | AuthFailResult> {
+  const started = Date.now();
   const normalized = email.toLowerCase().trim();
-  const rl = await generalRateLimit(normalized, { max: 3, windowMs: 10 * 60 * 1000 });
-  if (!rl.allowed) {
-    return { ok: false, error: `Too many attempts. Try again in ${rl.retryAfter ?? 60}s.` };
+  const ip = await getRequestIp();
+  const bucket = authBucket("forgot", normalized, ip);
+
+  const rl = await generalRateLimit(`forgot:${normalized}`, { max: 3, windowMs: 10 * 60 * 1000 });
+  const rlIp = await generalRateLimit(`forgot_ip:${ip}`, { max: 10, windowMs: 10 * 60 * 1000 });
+  if (!rl.allowed || !rlIp.allowed) {
+    const challenge = await createAuthCaptcha();
+    await equalizeTiming(started, MIN_FORGOT_MS);
+    return {
+      ok: false,
+      error: AUTH_RATE_LIMITED,
+      captchaRequired: true,
+      captcha: challenge,
+      retryAfter: rl.retryAfter ?? rlIp.retryAfter,
+    };
+  }
+
+  const lock = await getLockoutStatus(bucket);
+  if (lock.locked) {
+    const challenge = await createAuthCaptcha();
+    await equalizeTiming(started, MIN_FORGOT_MS);
+    return { ok: false, error: AUTH_LOCKED, captchaRequired: true, captcha: challenge, retryAfter: lock.retryAfterSec };
+  }
+  if (lock.captchaRequired) {
+    const okCaptcha = await verifyAuthCaptcha(String(captcha?.id || ""), String(captcha?.answer || ""));
+    if (!okCaptcha) {
+      const challenge = await createAuthCaptcha();
+      await equalizeTiming(started, MIN_FORGOT_MS);
+      return { ok: false, error: AUTH_CAPTCHA_REQUIRED, captchaRequired: true, captcha: challenge };
+    }
   }
 
   const user = await db
@@ -391,25 +500,27 @@ export async function sendForgotOtp(
     .where(and(eq(schema.users.email, normalized), isNull(schema.users.deletedAt)))
     .limit(1)
     .then((r) => r[0]);
-  // Do not reveal whether the email exists.
-  if (!user) return { ok: true };
 
+  // Always perform slow KDF work so missing-email responses match existing-email timing.
   const otp = generateOtp();
   const hashed = await bcrypt.hash(otp, 12);
-  const key = `forgot_otp_${normalized.replace(/[^a-z0-9]/g, "")}`;
-  await db
-    .insert(schema.settings)
-    .values({ key, value: JSON.stringify({ otp: hashed, expiresAt: Date.now() + 10 * 60 * 1000 }) })
-    .onConflictDoUpdate({
-      target: schema.settings.key,
-      set: { value: JSON.stringify({ otp: hashed, expiresAt: Date.now() + 10 * 60 * 1000 }) },
-    });
+  const key = `forgot_otp_${sha256Hex(normalized).slice(0, 32)}`;
 
-  const { sendEmail } = await import("@/lib/email");
-  await sendEmail({
-    to: normalized,
-    subject: "Password Reset OTP — Kadam Production",
-    html: `
+  if (user) {
+    await db
+      .insert(schema.settings)
+      .values({ key, value: JSON.stringify({ otp: hashed, expiresAt: Date.now() + OTP_TTL_MS }) })
+      .onConflictDoUpdate({
+        target: schema.settings.key,
+        set: { value: JSON.stringify({ otp: hashed, expiresAt: Date.now() + OTP_TTL_MS }) },
+      });
+
+    try {
+      const { sendEmail } = await import("@/lib/email");
+      await sendEmail({
+        to: normalized,
+        subject: "Password Reset OTP — Kadam Production",
+        html: `
       <div style="max-width:500px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
         <h2 style="color:#1e40af">Password Reset Request</h2>
         <p>Hello <strong>${escapeHtml(user.name)}</strong>,</p>
@@ -422,48 +533,84 @@ export async function sendForgotOtp(
         <p style="font-size:12px;color:#6b7280">Kadam Production — Professional Event Services</p>
       </div>
     `,
-  });
+      });
+    } catch (err) {
+      // Do not reveal mailer failure as "account exists".
+      console.error("[auth] forgot OTP email failed");
+    }
+  } else {
+    // Burn equivalent time when no account exists (approx. SMTP latency).
+    await new Promise((r) => setTimeout(r, 180 + randomInt(0, 120)));
+  }
 
-  return { ok: true };
+  await equalizeTiming(started, MIN_FORGOT_MS);
+  return { ok: true, message: AUTH_FORGOT_OK };
 }
 
 export async function verifyForgotOtp(
   email: string,
-  otp: string
-): Promise<{ ok: true; token: string } | { ok: false; error: string }> {
+  otp: string,
+  captcha?: { id?: string; answer?: string }
+): Promise<{ ok: true; token: string } | AuthFailResult> {
+  const started = Date.now();
   const normalized = email.toLowerCase().trim();
-  const rl = await generalRateLimit(`verify_otp_${normalized.replace(/[^a-z0-9]/g, "")}`, {
+  const ip = await getRequestIp();
+  const bucket = authBucket("otp", normalized, ip);
+
+  const rl = await generalRateLimit(`verify_otp:${sha256Hex(normalized).slice(0, 24)}`, {
     max: 5,
     windowMs: 15 * 60 * 1000,
   });
-  if (!rl.allowed) return { ok: false, error: "Too many attempts. Try again later." };
+  if (!rl.allowed) {
+    const challenge = await createAuthCaptcha();
+    await equalizeTiming(started, MIN_OTP_MS);
+    return { ok: false, error: AUTH_RATE_LIMITED, captchaRequired: true, captcha: challenge, retryAfter: rl.retryAfter };
+  }
 
-  const key = `forgot_otp_${normalized.replace(/[^a-z0-9]/g, "")}`;
+  const lock = await getLockoutStatus(bucket);
+  if (lock.captchaRequired) {
+    const okCaptcha = await verifyAuthCaptcha(String(captcha?.id || ""), String(captcha?.answer || ""));
+    if (!okCaptcha) {
+      const challenge = await createAuthCaptcha();
+      await equalizeTiming(started, MIN_OTP_MS);
+      return { ok: false, error: AUTH_CAPTCHA_REQUIRED, captchaRequired: true, captcha: challenge };
+    }
+  }
+
+  const key = `forgot_otp_${sha256Hex(normalized).slice(0, 32)}`;
   const row = await db
     .select()
     .from(schema.settings)
     .where(eq(schema.settings.key, key))
     .limit(1)
     .then((r) => r[0]);
-  if (!row) return { ok: false, error: "Invalid or expired OTP." };
 
-  let data: { otp: string; expiresAt: number };
-  try {
-    data = JSON.parse(row.value);
-  } catch {
-    await db.delete(schema.settings).where(eq(schema.settings.key, key));
-    return { ok: false, error: "Invalid or expired OTP." };
-  }
-  if (!data.otp || typeof data.expiresAt !== "number") {
-    await db.delete(schema.settings).where(eq(schema.settings.key, key));
-    return { ok: false, error: "Invalid or expired OTP." };
-  }
-  if (Date.now() > data.expiresAt) {
-    await db.delete(schema.settings).where(eq(schema.settings.key, key));
-    return { ok: false, error: "Invalid or expired OTP." };
+  let data: { otp: string; expiresAt: number } | null = null;
+  if (row) {
+    try {
+      data = JSON.parse(row.value);
+    } catch {
+      data = null;
+    }
   }
 
-  if (!(await bcrypt.compare(otp, data.otp))) return { ok: false, error: "Invalid or expired OTP." };
+  // Always bcrypt-compare (dummy hash if no OTP) for constant-time-ish behavior.
+  const otpHash = data?.otp && typeof data.otp === "string" ? data.otp : DUMMY_BCRYPT;
+  const otpMatch = await bcrypt.compare(otp || "000000", otpHash);
+  const notExpired = data && typeof data.expiresAt === "number" && Date.now() <= data.expiresAt;
+
+  if (!row || !data || !otpMatch || !notExpired) {
+    await recordAuthFailure(bucket);
+    await equalizeTiming(started, MIN_OTP_MS);
+    const status = await getLockoutStatus(bucket);
+    const challenge = status.captchaRequired ? await createAuthCaptcha() : undefined;
+    return {
+      ok: false,
+      error: AUTH_OTP_FAIL,
+      captchaRequired: status.captchaRequired,
+      captcha: challenge,
+    };
+  }
 
   await db.delete(schema.settings).where(eq(schema.settings.key, key));
 
@@ -473,7 +620,10 @@ export async function verifyForgotOtp(
     .where(and(eq(schema.users.email, normalized), isNull(schema.users.deletedAt)))
     .limit(1)
     .then((r) => r[0]);
-  if (!user) return { ok: false, error: "Invalid or expired OTP." };
+  if (!user) {
+    await equalizeTiming(started, MIN_OTP_MS);
+    return { ok: false, error: AUTH_OTP_FAIL };
+  }
 
   // Invalidate prior unused reset tokens for this user.
   await db
@@ -483,34 +633,42 @@ export async function verifyForgotOtp(
 
   const rawToken = randomBytes(32).toString("hex");
   const tokenHash = hashResetToken(rawToken);
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
   await db.insert(schema.passwordResets).values({
     userId: user.id,
     token: tokenHash,
     expiresAt,
   });
 
+  // Opaque JWT carries only a random jti (raw token). Never log this value.
   const resetToken = await new SignJWT({
     email: normalized,
     purpose: "password_reset",
     jti: rawToken,
   })
     .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime("15m")
+    .setExpirationTime("1h")
     .sign(getSecret());
 
+  await clearAuthFailures(bucket);
+  await equalizeTiming(started, MIN_OTP_MS);
   return { ok: true, token: resetToken };
 }
 
 export async function resetPasswordWithToken(
   token: string,
   newPassword: string
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true } | AuthFailResult> {
+  const started = Date.now();
   try {
-    if (newPassword.length < 8) return { ok: false, error: "Password must be at least 8 characters." };
+    if (newPassword.length < 8) {
+      await equalizeTiming(started, MIN_RESET_MS);
+      return { ok: false, error: "Password must be at least 8 characters." };
+    }
     const { payload } = await jwtVerify(token, getSecret());
     if (payload.purpose !== "password_reset" || !payload.email || !payload.jti) {
-      return { ok: false, error: "Invalid reset token." };
+      await equalizeTiming(started, MIN_RESET_MS);
+      return { ok: false, error: AUTH_TOKEN_FAIL };
     }
     const email = payload.email as string;
     const jti = payload.jti as string;
@@ -523,7 +681,8 @@ export async function resetPasswordWithToken(
       .limit(1)
       .then((r) => r[0]);
     if (!resetRow || resetRow.expiresAt.getTime() < Date.now()) {
-      return { ok: false, error: "Invalid or expired reset token." };
+      await equalizeTiming(started, MIN_RESET_MS);
+      return { ok: false, error: AUTH_TOKEN_FAIL };
     }
 
     const user = await db
@@ -532,8 +691,12 @@ export async function resetPasswordWithToken(
       .where(and(eq(schema.users.email, email), isNull(schema.users.deletedAt)))
       .limit(1)
       .then((r) => r[0]);
-    if (!user || user.id !== resetRow.userId) return { ok: false, error: "User not found." };
+    if (!user || user.id !== resetRow.userId) {
+      await equalizeTiming(started, MIN_RESET_MS);
+      return { ok: false, error: AUTH_TOKEN_FAIL };
+    }
 
+    // Single-use: mark consumed before password write.
     await db
       .update(schema.passwordResets)
       .set({ usedAt: new Date() })
@@ -541,17 +704,135 @@ export async function resetPasswordWithToken(
 
     await db
       .update(schema.users)
-      .set({ password: await hashPassword(newPassword), mustChangePwd: false })
+      .set({
+        password: await hashPassword(newPassword),
+        mustChangePwd: false,
+        // Completing reset also proves inbox control.
+        emailVerifiedAt: new Date(),
+        active: true,
+      })
       .where(eq(schema.users.id, user.id));
     await db
       .update(schema.sessions)
       .set({ revokedAt: new Date() })
       .where(and(eq(schema.sessions.userId, user.id), isNull(schema.sessions.revokedAt)));
 
+    await equalizeTiming(started, MIN_RESET_MS);
     return { ok: true };
   } catch {
-    return { ok: false, error: "Invalid or expired reset token." };
+    await equalizeTiming(started, MIN_RESET_MS);
+    return { ok: false, error: AUTH_TOKEN_FAIL };
   }
+}
+
+/** Issue a one-time email verification code (never put the code in a URL). */
+export async function issueEmailVerification(userId: number, email: string, name: string): Promise<void> {
+  const normalized = email.toLowerCase().trim();
+  const code = String(randomInt(100000, 1000000));
+  const key = `email_verify_${sha256Hex(normalized).slice(0, 32)}`;
+  const hash = await bcrypt.hash(code, 12);
+  const payload = JSON.stringify({
+    userId,
+    hash,
+    expiresAt: Date.now() + VERIFY_CODE_TTL_MS,
+  });
+  await db
+    .insert(schema.settings)
+    .values({ key, value: payload })
+    .onConflictDoUpdate({
+      target: schema.settings.key,
+      set: { value: payload },
+    });
+
+  const { sendEmail } = await import("@/lib/email");
+  await sendEmail({
+    to: normalized,
+    subject: "Verify your email — Kadam Production",
+    html: `
+      <div style="max-width:500px;margin:0 auto;font-family:Arial,sans-serif;color:#333">
+        <h2 style="color:#1e40af">Verify your email</h2>
+        <p>Hello <strong>${escapeHtml(name)}</strong>,</p>
+        <p>Enter this verification code in the app to activate your account. It expires in 1 hour.</p>
+        <div style="margin:24px 0;text-align:center">
+          <span style="display:inline-block;padding:12px 32px;font-size:28px;font-weight:700;letter-spacing:8px;background:#f3f4f6;border-radius:8px;color:#1e40af">${code}</span>
+        </div>
+        <p style="color:#6b7280;font-size:13px">If you did not expect this email, you can ignore it.</p>
+      </div>
+    `,
+  });
+}
+
+export async function verifyEmailOwnership(
+  email: string,
+  code: string,
+  captcha?: { id?: string; answer?: string }
+): Promise<{ ok: true } | AuthFailResult> {
+  const started = Date.now();
+  const normalized = email.toLowerCase().trim();
+  const ip = await getRequestIp();
+  const bucket = authBucket("verify", normalized, ip);
+
+  const rl = await generalRateLimit(`email_verify:${sha256Hex(normalized).slice(0, 24)}`, {
+    max: 5,
+    windowMs: 15 * 60 * 1000,
+  });
+  if (!rl.allowed) {
+    const challenge = await createAuthCaptcha();
+    await equalizeTiming(started, MIN_VERIFY_MS);
+    return { ok: false, error: AUTH_RATE_LIMITED, captchaRequired: true, captcha: challenge };
+  }
+
+  const lock = await getLockoutStatus(bucket);
+  if (lock.captchaRequired) {
+    const okCaptcha = await verifyAuthCaptcha(String(captcha?.id || ""), String(captcha?.answer || ""));
+    if (!okCaptcha) {
+      const challenge = await createAuthCaptcha();
+      await equalizeTiming(started, MIN_VERIFY_MS);
+      return { ok: false, error: AUTH_CAPTCHA_REQUIRED, captchaRequired: true, captcha: challenge };
+    }
+  }
+
+  const key = `email_verify_${sha256Hex(normalized).slice(0, 32)}`;
+  const row = await db
+    .select()
+    .from(schema.settings)
+    .where(eq(schema.settings.key, key))
+    .limit(1)
+    .then((r) => r[0]);
+
+  let data: { userId: number; hash: string; expiresAt: number } | null = null;
+  if (row) {
+    try {
+      data = JSON.parse(row.value);
+    } catch {
+      data = null;
+    }
+  }
+  const hash = data?.hash && typeof data.hash === "string" ? data.hash : DUMMY_BCRYPT;
+  const match = await bcrypt.compare(code || "000000", hash);
+  const fresh = data && typeof data.expiresAt === "number" && Date.now() <= data.expiresAt;
+
+  if (!row || !data || !match || !fresh) {
+    await recordAuthFailure(bucket);
+    await equalizeTiming(started, MIN_VERIFY_MS);
+    const status = await getLockoutStatus(bucket);
+    return {
+      ok: false,
+      error: AUTH_VERIFY_FAIL,
+      captchaRequired: status.captchaRequired,
+      captcha: status.captchaRequired ? await createAuthCaptcha() : undefined,
+    };
+  }
+
+  await db.delete(schema.settings).where(eq(schema.settings.key, key));
+  await db
+    .update(schema.users)
+    .set({ emailVerifiedAt: new Date(), active: true })
+    .where(and(eq(schema.users.id, data.userId), eq(schema.users.email, normalized)));
+
+  await clearAuthFailures(bucket);
+  await equalizeTiming(started, MIN_VERIFY_MS);
+  return { ok: true };
 }
 
 /** Verify current + set new password (Change Password page). */

@@ -38,6 +38,8 @@ export const users = sqliteTable(
     phone: text("phone"),
     // NEW columns
     mustChangePwd: integer("must_change_pwd", { mode: "boolean" }).notNull().default(false),
+    // Email ownership verification — null until the user proves inbox control.
+    emailVerifiedAt: integer("email_verified_at", { mode: "timestamp" }),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$onUpdateFn(() => new Date()),
     deletedAt: integer("deleted_at", { mode: "timestamp" }),
