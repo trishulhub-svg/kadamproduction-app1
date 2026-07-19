@@ -3,7 +3,17 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
+<<<<<<< HEAD
 const PUBLIC = ["/login", "/forgot-password", "/verify-email", "/invoice"];
+=======
+const PUBLIC = [
+  "/login",
+  "/forgot-password",
+  "/invoice",
+  "/change-email/complete",
+  "/change-email/verify",
+];
+>>>>>>> d5e74fc (Add secure email-change flow for admin OTP and employee approval)
 const COOKIE = "kp_session";
 
 async function payloadFromToken(
@@ -53,7 +63,16 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  const ADMIN_ONLY = ["/inventory", "/categories", "/orders", "/finance", "/employees", "/teams", "/settings"];
+  const ADMIN_ONLY = [
+    "/inventory",
+    "/categories",
+    "/orders",
+    "/finance",
+    "/employees",
+    "/teams",
+    "/settings",
+    "/email-change-requests",
+  ];
   if (session.role === "employee" && ADMIN_ONLY.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     const url = req.nextUrl.clone();
     url.pathname = "/";

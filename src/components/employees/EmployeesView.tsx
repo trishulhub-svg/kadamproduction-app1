@@ -180,7 +180,7 @@ function EditModal({ emp, onClose, onError }: { emp: Emp; onClose: () => void; o
     setPending(true);
     const f = new FormData(e.currentTarget);
     try {
-      await updateEmployee({ id: emp.id, name: String(f.get("name")), email: String(f.get("email")), phone: String(f.get("phone") || "") });
+      await updateEmployee({ id: emp.id, name: String(f.get("name")), phone: String(f.get("phone") || "") });
       onClose();
     } catch (err) { onError((err as Error).message); setPending(false); }
   }
@@ -189,7 +189,13 @@ function EditModal({ emp, onClose, onError }: { emp: Emp; onClose: () => void; o
       <form onSubmit={submit} className="space-y-4">
         <input type="hidden" name="id" value={emp.id} />
         <div><Label>Name *</Label><Input name="name" defaultValue={emp.name} required /></div>
-        <div><Label>Email *</Label><Input name="email" type="email" defaultValue={emp.email} required /></div>
+        <div>
+          <Label>Email</Label>
+          <Input name="email" type="email" defaultValue={emp.email} disabled readOnly />
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Email changes require employee request + admin approval (Email Requests).
+          </p>
+        </div>
         <div><Label>Phone</Label><Input name="phone" defaultValue={emp.phone ?? ""} /></div>
         <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" type="button" onClick={onClose}>Cancel</Button><Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save"}</Button></div>
       </form>
