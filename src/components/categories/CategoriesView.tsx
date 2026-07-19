@@ -122,8 +122,8 @@ function ItemRowDisplay({ item, onPrint }: { item: ItemRow; onPrint: () => void 
         <Package className="h-4 w-4 shrink-0 text-gray-400" />
         <span className="truncate text-sm font-medium text-gray-800">{item.name}</span>
         {item.description && <span className="truncate text-xs text-gray-400">{item.description}</span>}
-        <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">Qty: {item.quantity}</span>
-        <span className="shrink-0 font-mono text-xs text-gray-400">{item.barcode}</span>
+        <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-xs font-semibold text-gray-900 dark:bg-gray-800 dark:text-white">Qty: {item.quantity}</span>
+        <span className="shrink-0 font-mono text-xs font-medium text-gray-700 dark:text-gray-200">{item.barcode}</span>
       </div>
       <Button size="sm" variant="ghost" onClick={onPrint}><Printer className="h-3.5 w-3.5" /></Button>
     </div>
@@ -294,7 +294,7 @@ function PrintBarcodeModal({ item, onClose }: { item: ItemRow; onClose: () => vo
   return (
     <Modal open onClose={onClose} title="Print Barcode">
       <div className="space-y-4">
-        <div className="print-area rounded-lg border-2 border-dashed border-gray-300 p-6 text-center">
+        <div className="print-area barcode-print-sheet rounded-lg border-2 border-dashed border-gray-300 bg-white p-6 text-center text-black">
           <p className="text-lg font-bold text-gray-900">{item.name}</p>
           <div className="my-3">
             <svg viewBox="0 0 200 60" className="mx-auto h-16 w-48" style={{ imageRendering: "pixelated" }}>
@@ -302,7 +302,7 @@ function PrintBarcodeModal({ item, onClose }: { item: ItemRow; onClose: () => vo
             </svg>
           </div>
           <p className="font-mono text-sm tracking-widest text-gray-700">{item.barcode}</p>
-          <p className="mt-1 text-xs text-gray-400">Qty: {item.quantity}</p>
+          <p className="mt-1 text-xs text-gray-600">Qty: {item.quantity}</p>
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="ghost" type="button" onClick={onClose}>Close</Button>

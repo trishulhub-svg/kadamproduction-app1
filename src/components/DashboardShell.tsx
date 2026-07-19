@@ -60,7 +60,7 @@ export function DashboardShell({
           </div>
         </header>
         {/* Desktop top bar */}
-        <header className="sticky top-0 z-[80] hidden items-center justify-end gap-3 border-b border-gray-200 bg-white/80 px-6 py-2 backdrop-blur-lg dark:border-gray-700 dark:bg-gray-900/80 lg:flex">
+        <header className="sticky top-0 z-[80] hidden items-center justify-end gap-3 border-b border-gray-200 bg-white/80 px-6 py-2 backdrop-blur-lg dark:border-gray-800 dark:bg-black lg:flex">
           <NotificationBell />
         </header>
         <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
