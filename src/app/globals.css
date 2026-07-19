@@ -170,6 +170,11 @@ body {
 .dark body { color-scheme: dark; }
 :root { color-scheme: light; }
 
+/* Agentation toolbar sits above app chrome / FAB */
+.kp-agentation {
+  z-index: 99999 !important;
+}
+
 .fab {
   position: fixed;
   right: 1rem;
