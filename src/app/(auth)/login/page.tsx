@@ -1,4 +1,5 @@
 // src/app/(auth)/login/page.tsx
+import { Suspense } from "react";
 import { getLogoUrl } from "@/lib/settings";
 import { LoginForm } from "@/components/auth/LoginForm";
 
@@ -9,5 +10,9 @@ export default async function LoginPage() {
   } catch {
     logoUrl = null;
   }
-  return <LoginForm logoUrl={logoUrl} />;
+  return (
+    <Suspense>
+      <LoginForm logoUrl={logoUrl} />
+    </Suspense>
+  );
 }

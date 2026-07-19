@@ -1,6 +1,6 @@
 "use client";
 import { useActionState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { loginAction } from "@/server/auth-actions";
 import { Film } from "lucide-react";
@@ -8,6 +8,8 @@ import { Film } from "lucide-react";
 export function LoginForm({ logoUrl }: { logoUrl: string | null }) {
   const [state, formAction, pending] = useActionState(loginAction, null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const emailChanged = searchParams.get("emailChanged") === "1";
   const year = new Date().getFullYear();
   useEffect(() => {
     if (state?.ok) {
@@ -40,6 +42,12 @@ export function LoginForm({ logoUrl }: { logoUrl: string | null }) {
             <h1 className="text-xl font-extrabold tracking-wide text-gray-900 dark:text-gray-100">KADAM PRODUCTION</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">Professional Event Services</p>
           </div>
+
+          {emailChanged && (
+            <div className="mb-4 rounded-lg bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+              Email updated successfully. Sign in with your new email.
+            </div>
+          )}
 
           {state?.error && (
             <div className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 dark:bg-red-950/50 dark:text-red-400">

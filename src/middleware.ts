@@ -3,7 +3,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC = ["/login", "/forgot-password", "/invoice"];
+const PUBLIC = [
+  "/login",
+  "/forgot-password",
+  "/invoice",
+  "/change-email/complete",
+  "/change-email/verify",
+];
 const COOKIE = "kp_session";
 
 async function payloadFromToken(
@@ -53,7 +59,16 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  const ADMIN_ONLY = ["/inventory", "/categories", "/orders", "/finance", "/employees", "/teams", "/settings"];
+  const ADMIN_ONLY = [
+    "/inventory",
+    "/categories",
+    "/orders",
+    "/finance",
+    "/employees",
+    "/teams",
+    "/settings",
+    "/email-change-requests",
+  ];
   if (session.role === "employee" && ADMIN_ONLY.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     const url = req.nextUrl.clone();
     url.pathname = "/";
