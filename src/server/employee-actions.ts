@@ -105,11 +105,12 @@ export async function resetPassword(userId: number, newPassword: string) {
   revalidatePath("/employees");
 }
 
-export async function updateEmployee(input: { id: number; name: string; email: string; phone?: string }) {
+export async function updateEmployee(input: { id: number; name: string; email?: string; phone?: string }) {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
   const emp = await getTargetEmployee(input.id);
   if (!emp) throw new Error("Employee not found.");
+<<<<<<< HEAD
   const email = input.email.toLowerCase().trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Invalid email.");
   const dup = await db
@@ -119,9 +120,17 @@ export async function updateEmployee(input: { id: number; name: string; email: s
     .limit(1)
     .then((r) => r[0]);
   if (dup && dup.id !== input.id) throw new Error(AUTH_CREATE_FAIL);
+=======
+  // Employee email cannot be changed here — use the email-change request/approve/verify flow.
+  if (input.email && input.email.toLowerCase().trim() !== emp.email.toLowerCase()) {
+    throw new Error(
+      "Employee email cannot be changed directly. The employee must request a change; approve it under Email Requests."
+    );
+  }
+>>>>>>> d5e74fc (Add secure email-change flow for admin OTP and employee approval)
   await db
     .update(schema.users)
-    .set({ name: input.name.trim(), email, phone: input.phone || null })
+    .set({ name: input.name.trim(), phone: input.phone || null })
     .where(eq(schema.users.id, input.id));
   revalidatePath("/employees");
 }

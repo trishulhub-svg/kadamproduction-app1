@@ -161,6 +161,33 @@ const MIGRATION_DDL: { sql: string; label: string }[] = [
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
   )`, label: "notifications table" },
   { sql: `CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications(user_id)`, label: "notifications user index" },
+  { sql: `CREATE TABLE IF NOT EXISTS email_change_requests (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL,
+    current_email TEXT NOT NULL,
+    requested_new_email TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    form_token_hash TEXT,
+    form_token_expires_at INTEGER,
+    form_token_used_at INTEGER,
+    form_otp_hash TEXT,
+    pending_new_email TEXT,
+    pending_password_hash TEXT,
+    verify_token_hash TEXT,
+    verify_otp_hash TEXT,
+    verify_expires_at INTEGER,
+    verify_used_at INTEGER,
+    approved_by INTEGER,
+    approved_at INTEGER,
+    rejected_at INTEGER,
+    completed_at INTEGER,
+    expires_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`, label: "email_change_requests table" },
+  { sql: `CREATE INDEX IF NOT EXISTS email_change_user_idx ON email_change_requests(user_id)`, label: "email_change user index" },
+  { sql: `CREATE INDEX IF NOT EXISTS email_change_status_idx ON email_change_requests(status)`, label: "email_change status index" },
 ];
 
 export async function GET(req: Request) {

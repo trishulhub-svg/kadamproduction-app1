@@ -331,3 +331,55 @@ export const auditLog = sqliteTable(
     timestampIdx: index("audit_timestamp_idx").on(t.timestamp),
   })
 );
+
+// ──────────────────────────────────────────────────────────────────────────
+// Email change requests (admin OTP / employee request → approve → verify)
+// ──────────────────────────────────────────────────────────────────────────
+export const EMAIL_CHANGE_STATUS = [
+  "pending",
+  "approved",
+  "credentials_ok",
+  "completed",
+  "rejected",
+  "cancelled",
+  "expired",
+] as const;
+export type EmailChangeStatus = (typeof EMAIL_CHANGE_STATUS)[number];
+
+export const emailChangeRequests = sqliteTable(
+  "email_change_requests",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ROLES }).notNull(),
+    currentEmail: text("current_email").notNull(),
+    requestedNewEmail: text("requested_new_email"),
+    status: text("status", { enum: EMAIL_CHANGE_STATUS }).notNull().default("pending"),
+    // One-time form access after admin approval (employee flow)
+    formTokenHash: text("form_token_hash"),
+    formTokenExpiresAt: integer("form_token_expires_at", { mode: "timestamp" }),
+    formTokenUsedAt: integer("form_token_used_at", { mode: "timestamp" }),
+    formOtpHash: text("form_otp_hash"),
+    // After credentials validated — pending values applied only after new-email verify
+    pendingNewEmail: text("pending_new_email"),
+    pendingPasswordHash: text("pending_password_hash"),
+    // One-time new-email verification (OTP + link token)
+    verifyTokenHash: text("verify_token_hash"),
+    verifyOtpHash: text("verify_otp_hash"),
+    verifyExpiresAt: integer("verify_expires_at", { mode: "timestamp" }),
+    verifyUsedAt: integer("verify_used_at", { mode: "timestamp" }),
+    approvedBy: integer("approved_by"),
+    approvedAt: integer("approved_at", { mode: "timestamp" }),
+    rejectedAt: integer("rejected_at", { mode: "timestamp" }),
+    completedAt: integer("completed_at", { mode: "timestamp" }),
+    expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$onUpdateFn(() => new Date()),
+  },
+  (t) => ({
+    userIdx: index("email_change_user_idx").on(t.userId),
+    statusIdx: index("email_change_status_idx").on(t.status),
+  })
+);
