@@ -69,7 +69,7 @@ export function ForgotPasswordForm({ logoUrl }: { logoUrl: string | null }) {
                     type="email"
                     required
                     autoFocus
-                    className="glass-input h-11 w-full rounded-lg px-3 text-sm text-gray-100 placeholder-gray-500 outline-none transition-all focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15"
+                    className="glass-input h-11 w-full rounded-lg px-3 text-base md:text-sm text-gray-100 placeholder-gray-500 outline-none transition-all focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15"
                     placeholder="you@example.com"
                   />
                 </div>
@@ -131,7 +131,7 @@ export function ForgotPasswordForm({ logoUrl }: { logoUrl: string | null }) {
                     required
                     minLength={8}
                     autoFocus
-                    className="glass-input h-11 w-full rounded-lg px-3 text-sm text-gray-100 placeholder-gray-500 outline-none transition-all focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15"
+                    className="glass-input h-11 w-full rounded-lg px-3 text-base md:text-sm text-gray-100 placeholder-gray-500 outline-none transition-all focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15"
                     placeholder="Minimum 8 characters"
                   />
                   <p className="mt-1 text-xs text-gray-400">Minimum 8 characters</p>
@@ -143,7 +143,7 @@ export function ForgotPasswordForm({ logoUrl }: { logoUrl: string | null }) {
                     type="password"
                     required
                     minLength={8}
-                    className="glass-input h-11 w-full rounded-lg px-3 text-sm text-gray-100 placeholder-gray-500 outline-none transition-all focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15"
+                    className="glass-input h-11 w-full rounded-lg px-3 text-base md:text-sm text-gray-100 placeholder-gray-500 outline-none transition-all focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15"
                     placeholder="Repeat password"
                   />
                 </div>
