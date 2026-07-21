@@ -3,17 +3,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-<<<<<<< HEAD
-const PUBLIC = ["/login", "/forgot-password", "/verify-email", "/invoice"];
-=======
 const PUBLIC = [
   "/login",
   "/forgot-password",
+  "/verify-email",
   "/invoice",
   "/change-email/complete",
   "/change-email/verify",
 ];
->>>>>>> d5e74fc (Add secure email-change flow for admin OTP and employee approval)
 const COOKIE = "kp_session";
 
 async function payloadFromToken(
