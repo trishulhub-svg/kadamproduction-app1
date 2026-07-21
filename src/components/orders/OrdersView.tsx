@@ -56,8 +56,8 @@ export function OrdersView({ orders, counts, filters, hasFilter, openNew }: Prop
     <div>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-          <p className="text-sm text-gray-500">Smart view — select a status or date to load orders</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Orders</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Filter by status, date, or search — defaults to all orders</p>
         </div>
       </div>
 
@@ -73,8 +73,7 @@ export function OrdersView({ orders, counts, filters, hasFilter, openNew }: Prop
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div>
             <Label>Status</Label>
-            <Select value={filters.status || ""} onChange={(e) => setFilter("status", e.target.value)}>
-              <option value="">— Select status —</option>
+            <Select value={filters.status || "all"} onChange={(e) => setFilter("status", e.target.value)}>
               {STATUS_OPTS.map((s) => (
                 <option key={s.value} value={s.value}>{s.label} ({counts[s.value] ?? 0})</option>
               ))}
@@ -113,15 +112,16 @@ export function OrdersView({ orders, counts, filters, hasFilter, openNew }: Prop
         </div>
       </Card>
 
-      {/* Smart empty state (#5) */}
+      {/* Empty / list */}
       {!hasFilter ? (
         <EmptyState title="Select a status or date to view orders" hint="Filters keep the list fast and focused." />
       ) : orders.length === 0 ? (
         <EmptyState title="No orders match your filters" />
       ) : (
         <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left text-sm">
+          <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+            <p className="px-4 pt-3 text-xs text-gray-500 md:hidden">Swipe sideways to see all columns</p>
+            <table className="w-full min-w-[640px] text-left text-sm md:min-w-[900px]">
               <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-4 py-3">#</th>

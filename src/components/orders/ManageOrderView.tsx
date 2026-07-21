@@ -39,15 +39,15 @@ export function ManageOrderView({ detail }: { detail: Detail }) {
         <ArrowLeft className="h-4 w-4" /> Back to Orders
       </Link>
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Order #{order.id}</h1>
-          <p className="text-sm text-gray-500">{order.clientName}</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Order #{order.id}</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{order.clientName}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setAmountsVisible(!amountsVisible)}
-            className="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+            className="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/10"
           >
             {amountsVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
             {amountsVisible ? "Hide" : "Show"}

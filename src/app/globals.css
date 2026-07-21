@@ -205,6 +205,17 @@ body {
     color: #ffffff !important;
   }
 
+  /* Balance Due / light footer row: avoid white text on light gray */
+  .dark .print-area:not(.barcode-print-sheet) tfoot tr,
+  .dark .print-area:not(.barcode-print-sheet) .bg-gray-100 {
+    background-color: rgba(255, 255, 255, 0.14) !important;
+  }
+  .dark .print-area:not(.barcode-print-sheet) tfoot td,
+  .dark .print-area:not(.barcode-print-sheet) .bg-gray-100,
+  .dark .print-area:not(.barcode-print-sheet) .bg-gray-100 * {
+    color: #ffffff !important;
+  }
+
   /* Barcode print sheet: always solid white (no dark glass remaps) */
   .barcode-print-sheet,
   .dark .barcode-print-sheet,
