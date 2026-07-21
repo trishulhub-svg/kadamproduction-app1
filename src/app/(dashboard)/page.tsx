@@ -6,7 +6,6 @@ import { getDashboardStats, countAssignedOrders } from "@/lib/queries";
 import { StatCard } from "@/components/StatCard";
 import { Card } from "@/components/ui";
 import { StatusBadge } from "@/components/StatusBadge";
-import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -20,12 +19,12 @@ export default async function DashboardPage() {
     const assigned = await countAssignedOrders(user.id);
     return (
       <div>
-        <h1 className="mb-6 text-2xl font-bold text-gray-900">Kadam Production</h1>
+        <h1 className="mb-6 text-2xl font-bold text-gray-900 dark:text-gray-100">Kadam Production</h1>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="My Assigned Orders" value={assigned} tone="primary" href="/my-tasks" icon={ClipboardList} />
         </div>
         <Card className="mt-6 p-5">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-gray-300">
             Welcome! Use the <span className="font-semibold">Scan Item</span> feature to check items in/out for your assigned events.
             Check <span className="font-semibold">My Tasks</span> to see your upcoming events.
           </p>
@@ -41,10 +40,7 @@ export default async function DashboardPage() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Kadam Production</h1>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <span className="rounded-lg bg-kp-primary px-3 py-1.5 text-sm font-semibold text-white">ADMIN</span>
-        </div>
+        <span className="rounded-lg bg-kp-primary px-3 py-1.5 text-sm font-semibold text-white">ADMIN</span>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

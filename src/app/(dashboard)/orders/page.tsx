@@ -18,18 +18,22 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   };
   const openNew = sp.new === "1";
 
-  // Improvement #5 — "smart" orders: only query when a status or date is chosen
-  const hasFilter = Boolean(filters.status || filters.startDate || filters.endDate || filters.search || filters.year);
+  // Default to All Orders when no filter is chosen (avoid empty first-load state)
+  const effectiveFilters = {
+    ...filters,
+    status: filters.status || "all",
+  };
+  const hasFilter = true;
   let orders: Awaited<ReturnType<typeof listOrders>> = [];
   let counts: Awaited<ReturnType<typeof statusCounts>> = { ongoing: 0, upcoming: 0, completed: 0 };
   try {
-    if (hasFilter) orders = await listOrders(filters);
+    orders = await listOrders(effectiveFilters);
     counts = await statusCounts();
   } catch { /* use defaults */ }
 
   return (
     <Suspense fallback={<div className="p-8 text-sm text-gray-500">Loading orders…</div>}>
-      <OrdersView orders={orders} counts={counts} filters={filters as Record<string, string>} hasFilter={hasFilter} openNew={openNew} />
+      <OrdersView orders={orders} counts={counts} filters={effectiveFilters as Record<string, string>} hasFilter={hasFilter} openNew={openNew} />
     </Suspense>
   );
 }

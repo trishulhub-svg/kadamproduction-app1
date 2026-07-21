@@ -80,21 +80,22 @@ export function InventoryView({ categories, subcategories, items, date }: Props)
       </Card>
 
       {/* Table */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden pb-16 sm:pb-0">
         {filtered.length === 0 ? (
           <EmptyState title="No items found" hint="Use the + button to add inventory." />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] text-left text-sm">
+          <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+            <p className="px-4 pt-3 text-xs text-gray-500 md:hidden">Swipe sideways to see all columns</p>
+            <table className="w-full min-w-[640px] text-left text-sm md:min-w-[860px]">
               <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-4 py-3">Item</th>
-                  <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3">Sub-Category</th>
+                  <th className="hidden px-4 py-3 sm:table-cell">Category</th>
+                  <th className="hidden px-4 py-3 md:table-cell">Sub-Category</th>
                   <th className="px-4 py-3">Barcode</th>
                   <th className="px-4 py-3">Qty</th>
                   <th className="px-4 py-3">Available</th>
-                  <th className="px-4 py-3">Status</th>
+                  <th className="hidden px-4 py-3 sm:table-cell">Status</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -104,11 +105,12 @@ export function InventoryView({ categories, subcategories, items, date }: Props)
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{it.name}</div>
                       {it.description && <div className="text-xs text-gray-400">{it.description}</div>}
+                      <div className="mt-1 text-xs text-gray-500 sm:hidden">{it.categoryName ?? "—"}{it.subcategoryName ? ` · ${it.subcategoryName}` : ""}</div>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{it.categoryName ?? "—"}</td>
-                    <td className="px-4 py-3 text-gray-600">{it.subcategoryName ?? "—"}</td>
+                    <td className="hidden px-4 py-3 text-gray-600 sm:table-cell">{it.categoryName ?? "—"}</td>
+                    <td className="hidden px-4 py-3 text-gray-600 md:table-cell">{it.subcategoryName ?? "—"}</td>
                     <td className="px-4 py-3 font-mono text-xs text-gray-500">
-                      {it.barcode}
+                      <span className="break-all">{it.barcode}</span>
                       <button onClick={() => setPrintItem(it)} className="ml-1 text-gray-500 hover:text-gray-700" title="Print barcode"><Printer className="inline h-3.5 w-3.5" /></button>
                     </td>
                     <td className="px-4 py-3">
@@ -120,7 +122,7 @@ export function InventoryView({ categories, subcategories, items, date }: Props)
                     <td className="px-4 py-3">
                       <span className={`font-semibold ${it.available === 0 ? "text-kp-danger" : "text-kp-success"}`}>{it.available}</span>
                     </td>
-                    <td className="px-4 py-3"><StatusBadge status={it.status} /></td>
+                    <td className="hidden px-4 py-3 sm:table-cell"><StatusBadge status={it.status} /></td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
                         <Button size="sm" variant="warning" onClick={() => setEditItem(it)}>Edit</Button>

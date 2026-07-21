@@ -55,26 +55,37 @@ export function EmployeesView({ employees }: { employees: Emp[] }) {
           <option value="inactive">Inactive</option>
         </Select>
       </div>
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden pb-16 sm:pb-0">
         {employees.length === 0 ? (
           <EmptyState title="No employees" hint="Use the + button to add one." />
         ) : filtered.length === 0 ? (
           <EmptyState title="No matching employees" hint="Try a different search or filter." />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px] text-left text-sm">
+          <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+            <p className="px-4 pt-3 text-xs text-gray-500 md:hidden">Swipe sideways to see all columns</p>
+            <table className="w-full min-w-[520px] text-left text-sm md:min-w-[700px]">
               <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-                <tr><th className="px-4 py-3">Name</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">Phone</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Actions</th></tr>
+                <tr>
+                  <th className="px-4 py-3">Name</th>
+                  <th className="hidden px-4 py-3 sm:table-cell">Email</th>
+                  <th className="hidden px-4 py-3 md:table-cell">Phone</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
+                </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.map((e) => (
                   <tr key={e.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{e.name}</td>
-                    <td className="px-4 py-3 font-semibold text-gray-800 dark:text-gray-100">{e.email}</td>
-                    <td className="px-4 py-3 font-semibold text-gray-800 dark:text-gray-100">{e.phone ?? "—"}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      {e.name}
+                      <div className="mt-0.5 break-all text-xs font-normal text-gray-500 sm:hidden">{e.email}</div>
+                      {e.phone && <div className="text-xs font-normal text-gray-500 md:hidden sm:block">{e.phone}</div>}
+                    </td>
+                    <td className="hidden px-4 py-3 font-semibold text-gray-800 dark:text-gray-100 sm:table-cell">{e.email}</td>
+                    <td className="hidden px-4 py-3 font-semibold text-gray-800 dark:text-gray-100 md:table-cell">{e.phone ?? "—"}</td>
                     <td className="px-4 py-3">{e.active ? <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">Active</span> : <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">Deactivated</span>}</td>
                     <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex flex-wrap justify-end gap-2">
                         <EditBtn onClick={() => setEditTarget(e)} />
                         <ToggleBtn id={e.id} name={e.name} active={e.active} onError={setErrMsg} />
                         <ResetBtn onOpen={() => setResetTarget({ id: e.id, name: e.name })} />
