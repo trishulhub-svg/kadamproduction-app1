@@ -55,7 +55,7 @@ export function LoginForm({ logoUrl }: { logoUrl: string | null }) {
                 type="email"
                 required
                 autoFocus
-                className="glass-input h-11 w-full rounded-lg px-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15 dark:text-gray-100 dark:placeholder-gray-500"
+                className="glass-input h-11 w-full rounded-lg px-3 text-base md:text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15 dark:text-gray-100 dark:placeholder-gray-500"
                 placeholder="you@example.com"
               />
             </div>
@@ -65,7 +65,7 @@ export function LoginForm({ logoUrl }: { logoUrl: string | null }) {
                 name="password"
                 type="password"
                 required
-                className="glass-input h-11 w-full rounded-lg px-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15 dark:text-gray-100 dark:placeholder-gray-500"
+                className="glass-input h-11 w-full rounded-lg px-3 text-base md:text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15 dark:text-gray-100 dark:placeholder-gray-500"
                 placeholder="••••••••"
               />
             </div>

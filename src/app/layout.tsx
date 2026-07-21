@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { ThemeProviderWrapper } from "@/components/ThemeProviderWrapper";
-import { AgentationDev } from "@/components/AgentationDev";
 import "./globals.css";
 export const metadata: Metadata = {
   title: "Kadam Production",
@@ -13,10 +12,15 @@ export const metadata: Metadata = {
   },
 };
 
+/** Lock pinch/double-tap zoom app-wide; responsive layouts still follow device-width. */
 export const viewport: Viewport = {
   themeColor: "#f8fafc",
   width: "device-width",
   initialScale: 1,
+  minimumScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 const themeScript = `
@@ -44,10 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
-        <ThemeProviderWrapper>
-          {children}
-          <AgentationDev />
-        </ThemeProviderWrapper>
+        <ThemeProviderWrapper>{children}</ThemeProviderWrapper>
       </body>
     </html>
   );
