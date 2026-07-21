@@ -115,8 +115,8 @@ export function Sidebar({
         })}
       </nav>
 
-      {/* Theme toggle */}
-      <div className="px-3 pb-1">
+      {/* Theme toggle — desktop sidebar only; mobile uses DashboardShell header toggle */}
+      <div className="hidden px-3 pb-1 lg:block">
         <ThemeToggle />
       </div>
 
