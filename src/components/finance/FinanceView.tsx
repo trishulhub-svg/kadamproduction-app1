@@ -94,7 +94,7 @@ export function FinanceView({ summary, transactions, orders, startDate, endDate 
         <div className="flex-1 min-w-[160px]"><label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Start</label><Input type="date" value={startDate || ""} onChange={(e) => setParam("startDate", e.target.value)} /></div>
         <div className="flex-1 min-w-[160px]"><label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">End</label><Input type="date" value={endDate || ""} onChange={(e) => setParam("endDate", e.target.value)} /></div>
         <div className="min-w-[140px]"><label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Sort</label>
-          <select value={sort} onChange={(e) => setParam("sort", e.target.value)} className="glass-input h-10 w-full rounded-lg px-3 text-sm outline-none">
+          <select value={sort} onChange={(e) => setParam("sort", e.target.value)} className="glass-input h-10 w-full rounded-lg px-3 text-sm text-gray-900 outline-none dark:text-gray-100">
             {SORT_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>

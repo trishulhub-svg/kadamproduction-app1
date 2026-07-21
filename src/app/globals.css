@@ -119,7 +119,18 @@
     backdrop-filter: blur(14px) saturate(140%);
     -webkit-backdrop-filter: blur(14px) saturate(140%);
     border: 1px solid var(--glass-input-border);
+    color: var(--text);
     transform: translateZ(0);
+  }
+  /* Native <select> dropdown menus: black text on white options in dark mode */
+  .dark select.glass-input,
+  .dark .glass-input {
+    color: #f8fafc;
+  }
+  .dark select option,
+  .dark select.glass-input option {
+    background-color: #ffffff;
+    color: #000000;
   }
   .glass-sidebar {
     background: var(--glass-sidebar-bg);
@@ -149,13 +160,16 @@ body {
 @layer utilities {
   /*
     Light-mode-only grey text/chrome used across list pages (without dark:
-    variants) becomes illegible on --bg #05070a. Remap ONLY near-black text
-    (700–900) and light chrome surfaces (50/100) — never light text shades
-    (100–400), which previously caused invisible-on-dark bugs when remapped.
+    variants) becomes illegible on --bg #05070a. Remap near-black / mid-grey
+    text and light chrome surfaces for readable dark / system themes.
   */
   .dark .text-gray-900 { color: #f1f5f9; }
   .dark .text-gray-800 { color: #e2e8f0; }
   .dark .text-gray-700 { color: #cbd5e1; }
+  .dark .text-gray-600 { color: #e2e8f0; }
+  .dark .text-gray-500 { color: #cbd5e1; }
+  .dark .text-gray-400 { color: #94a3b8; }
+  .dark .text-black { color: #ffffff; }
   .dark .bg-gray-50 { background-color: rgba(255, 255, 255, 0.04); }
   .dark .bg-white { background-color: rgba(18, 22, 32, 0.6); }
   .dark .hover\:bg-gray-50:hover { background-color: rgba(255, 255, 255, 0.06); }
@@ -166,6 +180,46 @@ body {
   }
   .dark .bg-red-50 { background-color: rgba(127, 29, 29, 0.35); }
   .dark .bg-emerald-50 { background-color: rgba(6, 78, 59, 0.35); }
+
+  /* Invoice print-area on screen: white headings/body text in dark mode */
+  .dark .print-area:not(.barcode-print-sheet) {
+    color: #ffffff;
+  }
+  .dark .print-area:not(.barcode-print-sheet) h1,
+  .dark .print-area:not(.barcode-print-sheet) .font-black,
+  .dark .print-area:not(.barcode-print-sheet) .font-bold,
+  .dark .print-area:not(.barcode-print-sheet) .font-semibold {
+    color: #ffffff !important;
+  }
+  .dark .print-area:not(.barcode-print-sheet) .text-gray-700,
+  .dark .print-area:not(.barcode-print-sheet) .text-gray-500 {
+    color: #e2e8f0 !important;
+  }
+  .dark .print-area:not(.barcode-print-sheet) thead.bg-black,
+  .dark .print-area:not(.barcode-print-sheet) .bg-black {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+  }
+  .dark .print-area:not(.barcode-print-sheet) thead.bg-black th,
+  .dark .print-area:not(.barcode-print-sheet) .bg-black * {
+    color: #ffffff !important;
+  }
+
+  /* Barcode print sheet: always solid white (no dark glass remaps) */
+  .barcode-print-sheet,
+  .dark .barcode-print-sheet,
+  .dark .barcode-print-sheet.bg-white {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border-color: #d1d5db !important;
+  }
+  .dark .barcode-print-sheet,
+  .dark .barcode-print-sheet * {
+    color: #000000 !important;
+  }
+  .dark .barcode-print-sheet svg rect {
+    fill: #000000 !important;
+  }
 }
 .dark body { color-scheme: dark; }
 :root { color-scheme: light; }
@@ -212,7 +266,23 @@ body {
 @media print {
   body * { visibility: hidden; }
   .print-area, .print-area * { visibility: visible; }
-  .print-area { position: absolute; inset: 0; width: 100%; }
+  .print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .print-area * { color: #000000 !important; }
+  .print-area thead.bg-black,
+  .print-area .bg-black {
+    background: #000000 !important;
+    color: #ffffff !important;
+  }
+  .print-area thead.bg-black th,
+  .print-area .bg-black * {
+    color: #ffffff !important;
+  }
   .no-print { display: none !important; }
 }
 

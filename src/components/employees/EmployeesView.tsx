@@ -70,8 +70,8 @@ export function EmployeesView({ employees }: { employees: Emp[] }) {
                 {filtered.map((e) => (
                   <tr key={e.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-medium text-gray-900">{e.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{e.email}</td>
-                    <td className="px-4 py-3 text-gray-600">{e.phone ?? "—"}</td>
+                    <td className="px-4 py-3 font-semibold text-gray-800 dark:text-gray-100">{e.email}</td>
+                    <td className="px-4 py-3 font-semibold text-gray-800 dark:text-gray-100">{e.phone ?? "—"}</td>
                     <td className="px-4 py-3">{e.active ? <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">Active</span> : <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">Deactivated</span>}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">

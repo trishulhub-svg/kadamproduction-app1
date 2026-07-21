@@ -266,9 +266,9 @@ function PrintBarcodeModal({ item, onClose }: { item: ItemRow; onClose: () => vo
   return (
     <Modal open onClose={onClose} title="Print Barcode">
       <div className="space-y-4">
-        <div className="print-area rounded-lg border-2 border-dashed border-gray-300 p-6 text-center">
+        <div className="print-area barcode-print-sheet rounded-lg border-2 border-dashed border-gray-300 bg-white p-6 text-center text-black">
           <p className="text-lg font-bold text-gray-900">{item.name}</p>
-          {item.description && <p className="text-xs text-gray-500">{item.description}</p>}
+          {item.description && <p className="text-xs text-gray-600">{item.description}</p>}
           <div className="my-3">
             <svg viewBox="0 0 200 60" className="mx-auto h-16 w-48" style={{ imageRendering: "pixelated" }}>
               {generateBarcodeSvg(item.barcode)}
