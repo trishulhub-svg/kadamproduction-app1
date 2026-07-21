@@ -47,11 +47,7 @@ export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInp
   return (
     <input
       className={cn(
-<<<<<<< HEAD
-        "glass-input h-10 w-full rounded-lg px-3 text-base md:text-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20",
-=======
-        "glass-input h-10 w-full rounded-lg px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 dark:text-gray-100 dark:placeholder-gray-500",
->>>>>>> 0084e81 (Fix dark/system mode visibility across invoice, dropdowns, and lists)
+        "glass-input h-10 w-full rounded-lg px-3 text-base md:text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 dark:text-gray-100 dark:placeholder-gray-500",
         className
       )}
       {...props}
@@ -63,7 +59,7 @@ export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<H
   return (
     <textarea
       className={cn(
-        "glass-input w-full rounded-lg px-3 py-2 text-base md:text-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20",
+        "glass-input w-full rounded-lg px-3 py-2 text-base md:text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 dark:text-gray-100 dark:placeholder-gray-500",
         className
       )}
       {...props}
@@ -75,11 +71,7 @@ export function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLS
   return (
     <select
       className={cn(
-<<<<<<< HEAD
-        "glass-input h-10 w-full rounded-lg px-3 text-base md:text-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20",
-=======
-        "glass-input h-10 w-full rounded-lg px-3 text-sm text-gray-900 outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 dark:text-gray-100",
->>>>>>> 0084e81 (Fix dark/system mode visibility across invoice, dropdowns, and lists)
+        "glass-input h-10 w-full rounded-lg px-3 text-base md:text-sm text-gray-900 outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 dark:text-gray-100",
         className
       )}
       {...props}

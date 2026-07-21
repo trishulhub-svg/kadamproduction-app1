@@ -13,6 +13,8 @@ import {
   ScanLine,
   ListChecks,
   KeyRound,
+  Mail,
+  Inbox,
   LogOut,
   Film,
 } from "lucide-react";
@@ -30,7 +32,9 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Employees", href: "/employees", icon: Users },
   { label: "Teams", href: "/teams", icon: UsersRound },
   { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Email Requests", href: "/email-change-requests", icon: Inbox },
   { label: "Scan Item", href: "/scan", icon: ScanLine },
+  { label: "Change Email", href: "/change-email", icon: Mail },
   { label: "Change Password", href: "/change-password", icon: KeyRound },
 ];
 
@@ -38,6 +42,7 @@ const EMPLOYEE_NAV: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Scan Item", href: "/scan", icon: ScanLine },
   { label: "My Tasks", href: "/my-tasks", icon: ListChecks },
+  { label: "Change Email", href: "/change-email", icon: Mail },
   { label: "Change Password", href: "/change-password", icon: KeyRound },
 ];
 
