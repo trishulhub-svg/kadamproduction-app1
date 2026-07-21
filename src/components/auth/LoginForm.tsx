@@ -3,6 +3,7 @@ import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { loginAction } from "@/server/auth-actions";
+import { AuthCaptchaFields } from "@/components/auth/AuthCaptchaFields";
 import { Film } from "lucide-react";
 
 export function LoginForm({ logoUrl }: { logoUrl: string | null }) {
@@ -69,6 +70,7 @@ export function LoginForm({ logoUrl }: { logoUrl: string | null }) {
                 placeholder="••••••••"
               />
             </div>
+            <AuthCaptchaFields required={Boolean(state?.captchaRequired)} captcha={state?.captcha} />
             <button
               type="submit"
               disabled={pending}
@@ -76,9 +78,12 @@ export function LoginForm({ logoUrl }: { logoUrl: string | null }) {
             >
               {pending ? "Signing in\u2026" : "LOGIN"}
             </button>
-            <div className="text-center">
-              <Link href="/forgot-password" className="text-xs text-gray-500 hover:text-gray-300 transition-colors dark:text-gray-400 dark:hover:text-gray-200">
+            <div className="flex items-center justify-between text-xs">
+              <Link href="/forgot-password" className="text-gray-500 hover:text-gray-300 transition-colors dark:text-gray-400 dark:hover:text-gray-200">
                 Forgot password?
+              </Link>
+              <Link href="/verify-email" className="text-gray-500 hover:text-gray-300 transition-colors dark:text-gray-400 dark:hover:text-gray-200">
+                Verify email
               </Link>
             </div>
           </form>

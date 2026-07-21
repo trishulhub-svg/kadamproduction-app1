@@ -2,6 +2,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { forgotPasswordAction, verifyOtpAction, resetPasswordAction } from "@/server/auth-actions";
+import { AuthCaptchaFields } from "@/components/auth/AuthCaptchaFields";
 import { Film, ArrowLeft } from "lucide-react";
 
 export function ForgotPasswordForm({ logoUrl }: { logoUrl: string | null }) {
@@ -73,6 +74,7 @@ export function ForgotPasswordForm({ logoUrl }: { logoUrl: string | null }) {
                     placeholder="you@example.com"
                   />
                 </div>
+                <AuthCaptchaFields required={Boolean(emailState?.captchaRequired)} captcha={emailState?.captcha} />
                 <button
                   type="submit"
                   disabled={emailPending}
@@ -105,6 +107,7 @@ export function ForgotPasswordForm({ logoUrl }: { logoUrl: string | null }) {
                     placeholder="000000"
                   />
                 </div>
+                <AuthCaptchaFields required={Boolean(otpState?.captchaRequired)} captcha={otpState?.captcha} />
                 <button
                   type="submit"
                   disabled={otpPending}

@@ -13,9 +13,9 @@ async function main() {
     console.log("Admin already exists — skipping.");
     return;
   }
-  const hash = await bcrypt.hash("admin123", 10);
+  const hash = await bcrypt.hash("admin123", 12);
   await client.execute({
-    sql: "INSERT INTO users (name, email, password, role, must_change_pwd) VALUES (?, ?, ?, 'admin', 1)",
+    sql: "INSERT INTO users (name, email, password, role, must_change_pwd, email_verified_at, active) VALUES (?, ?, ?, 'admin', 1, unixepoch(), 1)",
     args: ["KP Admin", "admin@kadamproduction.in", hash],
   });
   console.log("✓ Seeded admin → admin@kadamproduction.in / admin123");

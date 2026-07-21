@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { eq, isNull, and, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { requireAdmin, hashPassword } from "@/lib/auth";
+import { requireAdmin, hashPassword, issueEmailVerification } from "@/lib/auth";
+import { AUTH_CREATE_FAIL } from "@/lib/auth-security";
 import { dispatchNotification } from "./notification-dispatcher";
 
 /** Only allow mutating employee-role users (never other admins). */
@@ -40,32 +41,43 @@ export async function createEmployee(input: { name: string; email: string; phone
     .from(schema.users)
     .where(and(eq(schema.users.email, email), isNull(schema.users.deletedAt)))
     .limit(1);
-  if (exists.length) throw new Error("Email already in use.");
-  const result = await db
-    .insert(schema.users)
-    .values({
-      name: input.name.trim(),
-      email,
-      phone: input.phone || null,
-      password: await hashPassword(input.password),
-      role: "employee",
-      mustChangePwd: true,
-    })
-    .then(() =>
-      db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, email)).limit(1).then((r) => r[0])
-    );
+  // Anti-enumeration: identical error whether the email is taken or insert fails.
+  if (exists.length) throw new Error(AUTH_CREATE_FAIL);
+
+  let result: { id: number } | undefined;
   try {
-    const { sendWelcomeEmail } = await import("@/lib/email");
-    await sendWelcomeEmail({ to: email, name: input.name.trim() });
+    result = await db
+      .insert(schema.users)
+      .values({
+        name: input.name.trim(),
+        email,
+        phone: input.phone || null,
+        password: await hashPassword(input.password),
+        role: "employee",
+        mustChangePwd: true,
+        // Inactive until the invitee proves email ownership.
+        active: false,
+        emailVerifiedAt: null,
+      })
+      .then(() =>
+        db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, email)).limit(1).then((r) => r[0])
+      );
+  } catch {
+    throw new Error(AUTH_CREATE_FAIL);
+  }
+  if (!result?.id) throw new Error(AUTH_CREATE_FAIL);
+
+  try {
+    await issueEmailVerification(result.id, email, input.name.trim());
     await dispatchNotification({
       userId: result.id,
       type: "account_created",
-      title: "Welcome to Kadam Production",
-      message: `Your account has been created. Check your email for login details.`,
-      link: "/my-tasks",
+      title: "Verify your email",
+      message: `Check your inbox for a verification code before signing in.`,
+      link: "/verify-email",
     });
   } catch (err) {
-    console.error("[employee-actions] Failed to send welcome notification:", err);
+    console.error("[employee-actions] Failed to send verification notification");
   }
   revalidatePath("/employees");
 }
@@ -106,7 +118,7 @@ export async function updateEmployee(input: { id: number; name: string; email: s
     .where(and(eq(schema.users.email, email), isNull(schema.users.deletedAt)))
     .limit(1)
     .then((r) => r[0]);
-  if (dup && dup.id !== input.id) throw new Error("Email already in use.");
+  if (dup && dup.id !== input.id) throw new Error(AUTH_CREATE_FAIL);
   await db
     .update(schema.users)
     .set({ name: input.name.trim(), email, phone: input.phone || null })
